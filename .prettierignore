@@ -1,0 +1,22 @@
+node_modules
+dist
+.next
+.turbo
+coverage
+pnpm-lock.yaml
+next-env.d.ts
+
+# Skills de terceros (skills-lock.json): reformatearlas cambia su hash de procedencia.
+.claude/skills/systematic-debugging
+.claude/skills/test-driven-development
+.claude/skills/turborepo
+apps/backend/.claude/skills/nestjs-best-practices
+apps/backend/.claude/skills/postgresql-table-design
+apps/frontend/.claude/skills/accessibility-compliance
+apps/frontend/.claude/skills/next-best-practices
+apps/frontend/.claude/skills/next-upgrade
+apps/frontend/.claude/skills/responsive-design
+apps/frontend/.claude/skills/tailwind-design-system
+apps/frontend/.claude/skills/vercel-composition-patterns
+apps/frontend/.claude/skills/vercel-react-best-practices
+apps/frontend/.claude/skills/web-design-guidelines

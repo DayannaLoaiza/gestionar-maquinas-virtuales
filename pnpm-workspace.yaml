@@ -1,0 +1,15 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 10 no ejecuta scripts postinstall de dependencias salvo los autorizados aquí.
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@tailwindcss/oxide'
+  - argon2
+  - esbuild
+  - sharp
+  - unrs-resolver
+
+ignoredBuiltDependencies:
+  - '@parcel/watcher'

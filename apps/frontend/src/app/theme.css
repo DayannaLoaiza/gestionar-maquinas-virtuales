@@ -1,0 +1,93 @@
+/* Paleta del producto. La primera línea borra la paleta de Tailwind: solo existen los
+   colores de este archivo y los semánticos de globals.css. Una clase de un color no definido
+   (`bg-zinc-50`, `text-red-600`) compila a nada, sin error: lo detecta `palette.test.ts`. */
+@theme {
+  --color-*: initial;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Azul de marca: CTAs, enlaces, foco. 500 es el azul principal; 400, su hover sobre fondo
+     oscuro. Blanco sobre 500: 7.77:1; sobre 400: 4.82:1. */
+  --color-primary-50: #edefff;
+  --color-primary-100: #dbe1ff;
+  --color-primary-200: #a8beff;
+  --color-primary-300: #7193ff;
+  --color-primary-400: #2864ff;
+  --color-primary-500: #003cde;
+  --color-primary-600: #0033cc;
+  --color-primary-700: #0014b6;
+  --color-primary-800: #0d207f;
+  --color-primary-900: #0f1a5c;
+  --color-primary-950: #0a1036;
+
+  /* Cian de acento: resaltados, gráficos, el destello del tiempo real. Nunca texto sobre fondo
+     claro (500 sobre blanco: 1.6:1); como texto, 700 u 800. Texto sobre cian: navy-900. */
+  --color-secondary-50: #e5fcff;
+  --color-secondary-100: #ccf9ff;
+  --color-secondary-200: #99f3ff;
+  --color-secondary-400: #28ffff;
+  --color-secondary-500: #00e0ff;
+  --color-secondary-600: #00b8d4;
+  --color-secondary-700: #007a8a;
+  --color-secondary-800: #005c68;
+
+  /* Azul marino: superficies del modo oscuro (950 fondo, 900 tarjeta, 800 borde) y titulares en
+     modo claro. */
+  --color-navy-50: #eef0fa;
+  --color-navy-100: #dde1f3;
+  --color-navy-200: #b9c0e4;
+  --color-navy-300: #8c95c9;
+  --color-navy-400: #5f6aab;
+  --color-navy-500: #424c8f;
+  --color-navy-600: #343c78;
+  --color-navy-700: #2a3168;
+  --color-navy-800: #232a5c;
+  --color-navy-900: #11153d;
+  --color-navy-950: #070a1f;
+
+  /* Grises neutros: fondos, bordes y texto secundario en modo claro. */
+  --color-surface-50: #f8fafc;
+  --color-surface-100: #f6f6f6;
+  --color-surface-200: #e6e6e6;
+  --color-surface-300: #d6d6d6;
+  --color-surface-400: #a9a9a9;
+  --color-surface-500: #666666;
+  --color-surface-600: #494a52;
+  --color-surface-700: #3a3a3a;
+  --color-surface-800: #232323;
+  --color-surface-900: #171717;
+  --color-surface-950: #0a0a0a;
+
+  /* Estados. Todas las familias tienen 50 · 100 · 200 · 500 · 600 · 700 · 800. 500 es el valor de
+     marca (success, error) o el de Tailwind (warning); el resto, de la familia de Tailwind
+     (green, amber, red). Alerta: fondo 50, borde 200, ícono 600, texto 700/800 (>= 4.79:1 sobre su
+     50). Sobre fondo claro, 500 nunca es texto; sobre navy-950, sí (>= 6.4:1). */
+  --color-success-50: #f0fdf4;
+  --color-success-100: #dcfce7;
+  --color-success-200: #bbf7d0;
+  --color-success-500: #34e675;
+  --color-success-600: #16a34a;
+  --color-success-700: #15803d;
+  --color-success-800: #166534;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+
+  --color-error-50: #fef2f2;
+  --color-error-100: #fee2e2;
+  --color-error-200: #fecaca;
+  --color-error-500: #ef6b51;
+  --color-error-600: #dc2626;
+  --color-error-700: #b91c1c;
+  --color-error-800: #991b1b;
+}

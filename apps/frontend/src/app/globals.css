@@ -1,0 +1,69 @@
+@import 'tailwindcss';
+@import './theme.css';
+
+/* Tokens semánticos: cambian entre modo claro y oscuro (azul marino), así los componentes no repiten
+   `dark:`. Valores literales a propósito, iguales a los de theme.css: Tailwind solo emite las
+   variables del tema que se usan, así que un var() aquí podría quedar vacío. Para un toggle manual,
+   cambiar la media query por un selector `.dark`. */
+:root {
+  --background: #ffffff; /* white */
+  --foreground: #11153d; /* navy-900 */
+  --card: #ffffff; /* white */
+  --card-foreground: #11153d; /* navy-900 */
+  --muted: #f6f6f6; /* surface-100 */
+  --muted-foreground: #666666; /* surface-500 */
+  --border: #d6d6d6; /* surface-300 */
+  --ring: #003cde; /* primary-500 */
+  --link: #0033cc; /* primary-600 */
+  --primary-foreground: #ffffff; /* white */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #070a1f; /* navy-950 */
+    --foreground: #ffffff; /* white */
+    --card: #11153d; /* navy-900 */
+    --card-foreground: #ffffff; /* white */
+    --muted: #232a5c; /* navy-800 */
+    --muted-foreground: #b9c0e4; /* navy-200 */
+    --border: #232a5c; /* navy-800 */
+    --ring: #2864ff; /* primary-400 */
+    --link: #7193ff; /* primary-300: primary-400 sobre navy-950 no llega a 4.5:1 */
+    --primary-foreground: #ffffff; /* white */
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-link: var(--link);
+  --color-primary-foreground: var(--primary-foreground);
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Foco de botones y enlaces. En `@layer base` para que un componente con foco propio lo reemplace
+     con `outline-none` + su anillo, sin `!`. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-200);
+    color: var(--color-navy-900);
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm *)",
+      "Bash(npx nest *)",
+      "Bash(npx next *)",
+      "Bash(npx prettier *)",
+      "Bash(npx eslint *)",
+      "Bash(npx skills *)",
+      "Bash(npx jest *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(echo *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "mcp__context7__*"
+    ],
+    "ask": ["Bash(git add *)", "Bash(git commit *)"],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(pnpm publish *)",
+      "Bash(npm publish *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/format.mjs\""
+          }
+        ]
+      }
+    ]
+  },
+  "claudeMdExcludes": ["**/.claude/skills/**/AGENTS.md"],
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
+  },
+  "skillOverrides": {
+    "test-driven-development": "user-invocable-only",
+    "next-upgrade": "user-invocable-only"
+  }
+}
