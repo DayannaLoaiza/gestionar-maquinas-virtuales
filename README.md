@@ -123,12 +123,16 @@ docs/                       # Constitución, SDD, política de pruebas, specs
   `VALIDATION_ERROR`) y el frontend muestra su propio texto.
 - Rutas de negocio bajo `/api/…`.
 
-| Método | Ruta               | Acceso  | Descripción                                                                |
-| ------ | ------------------ | ------- | -------------------------------------------------------------------------- |
-| `GET`  | `/health`          | Público | Estado del servicio                                                        |
-| `POST` | `/api/auth/login`  | Público | `{ email, password }` → cookie de sesión + `{ user: { id, email, role } }` |
-| `POST` | `/api/auth/logout` | Público | Revoca la sesión (si hay) y expira la cookie                               |
-| `GET`  | `/api/auth/me`     | Sesión  | El usuario de la sesión                                                    |
+| Método   | Ruta               | Acceso        | Descripción                                                                                   |
+| -------- | ------------------ | ------------- | --------------------------------------------------------------------------------------------- |
+| `GET`    | `/health`          | Público       | Estado del servicio                                                                           |
+| `POST`   | `/api/auth/login`  | Público       | `{ email, password }` → cookie de sesión + `{ user: { id, email, role } }`                    |
+| `POST`   | `/api/auth/logout` | Público       | Revoca la sesión (si hay) y expira la cookie                                                  |
+| `GET`    | `/api/auth/me`     | Sesión        | El usuario de la sesión                                                                       |
+| `GET`    | `/api/vms`         | Sesión        | Todas las VMs, de la más nueva a la más antigua: `{ items }`                                  |
+| `POST`   | `/api/vms`         | Administrador | `{ name, cores, ram, disk, os, status? }` → `201` `{ item }` (`status` por defecto `Apagada`) |
+| `PUT`    | `/api/vms/:id`     | Administrador | Cambia solo los campos enviados (al menos uno) → `{ item }`                                   |
+| `DELETE` | `/api/vms/:id`     | Administrador | Borra la VM → `204` sin cuerpo                                                                |
 
 **Sesión.** El JWT viaja **solo** en la cookie `__Host-vm_session` (`HttpOnly`, `Secure`,
 `SameSite=Strict`, `Path=/`), nunca en el cuerpo. Vence tras 7 días sin uso o a los 30 días del
@@ -141,12 +145,16 @@ restringidas por rol responden `403` al resto.
 | `UNAUTHENTICATED`     | 401    | Ruta protegida sin sesión válida                                       |
 | `FORBIDDEN`           | 403    | Rol sin permiso, u `Origin` no permitido en `POST/PUT/PATCH/DELETE`    |
 | `TOO_MANY_REQUESTS`   | 429    | Más de 5 intentos de login por minuto (por IP o por email)             |
-| `VALIDATION_ERROR`    | 400    | Cuerpo con campos inválidos                                            |
+| `VALIDATION_ERROR`    | 400    | Cuerpo con campos inválidos, o id de la ruta que no es un UUID         |
 | `INVALID_BODY`        | 400    | Cuerpo que no es JSON válido (la API solo acepta `application/json`)   |
 | `PAYLOAD_TOO_LARGE`   | 413    | Cuerpo de más de 100 KB                                                |
+| `VM_NAME_TAKEN`       | 409    | Otra VM ya usa ese nombre (sin distinguir mayúsculas)                  |
+| `VM_NOT_FOUND`        | 404    | El id no corresponde a ninguna VM                                      |
 
-Los endpoints de VMs (`/api/vms`) se agregan con su spec (`docs/product.md` → "Capacidades
-previstas").
+**VMs.** `name` de 1 a 63 caracteres (letras sin tilde, dígitos, `-`, `_`, `.`; empieza y termina
+con letra o dígito), único sin distinguir mayúsculas; `cores` de 1 a 128; `ram` de 1 a 1024 GB;
+`disk` de 1 a 65 536 GB; `os` uno de `Ubuntu`, `Debian`, `Rocky Linux`, `Red Hat Enterprise Linux`,
+`Windows Server`; `status` `Encendida` o `Apagada`. Detalle: `docs/specs/virtual-machines/spec.md`.
 
 ## Credenciales de prueba
 

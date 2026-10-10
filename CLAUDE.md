@@ -42,7 +42,9 @@ con gráficos de recursos, optimistic UI y actualización en tiempo real del est
 alcance y decisiones abiertas: `docs/product.md`.
 
 Capacidades implementadas: el **backend de `auth`** (`docs/specs/auth/spec.md`: PostgreSQL +
-TypeORM, sesión en cookie `HttpOnly`, guards globales, rate limit, helmet). No agregues funcionalidad
+TypeORM, sesión en cookie `HttpOnly`, guards globales, rate limit, helmet) y el **backend de
+`virtual-machines`** (`docs/specs/virtual-machines/spec.md`: CRUD de VMs en `/api/vms` con
+escritura solo para Administrador). No agregues funcionalidad
 de ejemplo ni datos semilla salvo los que pida una spec aprobada (p. ej., los usuarios de prueba de
 `db:seed`): cada capacidad entra por SDD.
 
@@ -81,9 +83,12 @@ pnpm test           # Jest (backend) + Vitest (frontend)
 pnpm format         # / format:check
 
 pnpm --filter @vm/backend test:e2e
-pnpm --filter @vm/backend test -- src/shared/utils/pagination.util.spec.ts
-pnpm --filter @vm/backend test -- -t "RF-<slug>-NN"
+pnpm --filter @vm/backend test src/shared/utils/pagination.util.spec.ts
+pnpm --filter @vm/backend test -t "RF-<slug>-NN"       # también test:e2e y @vm/frontend test
 ```
+
+Los argumentos van **sin `--`**: pnpm reenvía el `--` al runner, y entonces Jest toma `-t` como
+patrón de ruta (`No tests found`) y Vitest ignora el filtro (corre todo).
 
 ## Context per app
 

@@ -12,7 +12,9 @@ Steps:
    Vitest doesn't run with WSL's `node` against this `node_modules` (installed for win32): from WSL
    run it through Windows Node:
    `cmd.exe /c "cd /d <ruta Windows>\apps\frontend && node_modules\.bin\vitest.CMD run"`
-3. To run the tests of one requirement: `-- -t "RF-<slug>-NN"` (Jest and Vitest)
+3. To run the tests of one requirement, append `-t "RF-<slug>-NN"` **without `--`** (Jest and
+   Vitest), e.g. `pnpm --filter @vm/backend test:e2e -t "RF-<slug>-NN"`. pnpm forwards a `--` to
+   the runner: Jest then reads `-t` as a path pattern and Vitest ignores the filter
 4. Report pass/fail counts per suite
 5. If failures, analyze and suggest fixes — never delete, skip or weaken a test to make it pass
    (`docs/testing.md`)

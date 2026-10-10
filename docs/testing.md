@@ -81,7 +81,8 @@ entra todo. Con dos, la pregunta es binaria y se responde con K1–K6.
    tests fuera de esa tabla sin preguntar, y G4 compara lo escrito contra la tabla.
 2. **Lleva su dueño en el nombre**, `RF-<slug>-NN`, en el `describe` o en el `it`. Así se rastrea
    hasta un requisito vigente y se ejecuta solo:
-   `pnpm --filter @vm/backend test -- -t "RF-<slug>-03"` (Vitest acepta el mismo `-t`).
+   `pnpm --filter @vm/backend test -t "RF-<slug>-03"` (también `test:e2e` y Vitest). Sin `--`:
+   pnpm lo reenviaría al runner y el filtro se perdería.
 3. **Muere con su requisito.** Si un RF se retira de la spec, sus tests se borran o se reasignan en
    el mismo PR.
 4. **Señales de que un test sobra.** Se revisa cuando aparece la señal, no en limpiezas periódicas:

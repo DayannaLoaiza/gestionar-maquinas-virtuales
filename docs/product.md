@@ -89,7 +89,7 @@ y `status`.
 
 Rutas según la convención del repo (`@Controller('api/<recurso>')`): las de autenticación están
 decididas en `docs/specs/auth/spec.md` (`/api/auth/login`, `/logout`, `/me`); las de VMs
-(`GET|POST /api/vms`, `PUT|DELETE /api/vms/:id`) quedan `[NECESITA ACLARACIÓN]` hasta su spec.
+(`GET|POST /api/vms`, `PUT|DELETE /api/vms/:id`), en `docs/specs/virtual-machines/spec.md`.
 
 ## Documentación que el README debe tener
 
@@ -107,16 +107,16 @@ decididas en `docs/specs/auth/spec.md` (`/api/auth/login`, `/logout`, `/me`); la
 
 Se resuelven en la spec o el plan de la capacidad que las necesite. No se instala nada antes.
 
-| Tema                       | `[NECESITA ACLARACIÓN]`                                                                    | Capacidad            |
-| -------------------------- | ------------------------------------------------------------------------------------------ | -------------------- |
-| ~~Persistencia~~           | Resuelta: PostgreSQL + TypeORM; usuarios de prueba por `db:seed` (spec `auth`)             | `auth`               |
-| Estado de servidor         | Librería para caché, optimistic UI y reversión (p. ej., TanStack Query)                    | `virtual-machines`   |
-| Gráficos                   | Recharts o Chart.js                                                                        | `resource-dashboard` |
-| Tiempo real                | `@nestjs/websockets` + Socket.io; cómo se autentica el socket con la cookie                | `realtime-vm-status` |
-| Toggle de tema             | La paleta y el dark mode están definidos; ¿además un toggle manual persistido?             | transversal (UI)     |
-| Valores de `os` y `status` | Catálogo cerrado (constantes en `@vm/shared-types`) y transiciones de estado permitidas    | `virtual-machines`   |
-| Listado                    | ¿Paginado (convención del repo) o la lista completa?                                       | `virtual-machines`   |
-| ~~Sesión~~                 | Resuelta (spec `auth`): 7 días sin uso / 30 desde el login, logout que revoca, sin refresh | `auth`               |
+| Tema                           | `[NECESITA ACLARACIÓN]`                                                                                   | Capacidad            |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- | -------------------- |
+| ~~Persistencia~~               | Resuelta: PostgreSQL + TypeORM; usuarios de prueba por `db:seed` (spec `auth`)                            | `auth`               |
+| Estado de servidor             | Librería para caché, optimistic UI y reversión (p. ej., TanStack Query)                                   | `virtual-machines`   |
+| Gráficos                       | Recharts o Chart.js                                                                                       | `resource-dashboard` |
+| Tiempo real                    | `@nestjs/websockets` + Socket.io; cómo se autentica el socket con la cookie                               | `realtime-vm-status` |
+| Toggle de tema                 | La paleta y el dark mode están definidos; ¿además un toggle manual persistido?                            | transversal (UI)     |
+| ~~Valores de `os` y `status`~~ | Resuelta: catálogo cerrado de `os` en `@vm/shared-types`; sin reglas por estado (spec `virtual-machines`) | `virtual-machines`   |
+| ~~Listado~~                    | Resuelta: lista completa, sin paginar (spec `virtual-machines`)                                           | `virtual-machines`   |
+| ~~Sesión~~                     | Resuelta (spec `auth`): 7 días sin uso / 30 desde el login, logout que revoca, sin refresh                | `auth`               |
 
 ## Capacidades previstas
 

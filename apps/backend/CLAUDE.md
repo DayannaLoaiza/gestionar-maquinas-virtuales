@@ -13,13 +13,15 @@ supertest.
 
 ## Modules
 
-| Module   | Description                                                                        |
-| -------- | ---------------------------------------------------------------------------------- |
-| `health` | `GET /health` (fuera de `/api`, `@Public()`)                                       |
-| `users`  | Entidad `users`, repositorio y `UsersService` (búsqueda, `ensureUser`, `AuthUser`) |
-| `auth`   | `/api/auth/login`, `logout`, `me`; sesiones; guards globales; rate limit del login |
+| Module             | Description                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| `health`           | `GET /health` (fuera de `/api`, `@Public()`)                                        |
+| `users`            | Entidad `users`, repositorio y `UsersService` (búsqueda, `ensureUser`, `AuthUser`)  |
+| `auth`             | `/api/auth/login`, `logout`, `me`; sesiones; guards globales; rate limit del login  |
+| `virtual-machines` | `GET`, `POST /api/vms`; `PUT`, `DELETE /api/vms/:id` (escritura solo Administrador) |
 
-Spec de `users` + `auth`: `docs/specs/auth/spec.md`. Cada capacidad nueva entra por el flujo SDD
+Spec de `users` + `auth`: `docs/specs/auth/spec.md`. Spec de `virtual-machines`:
+`docs/specs/virtual-machines/spec.md`. Cada capacidad nueva entra por el flujo SDD
 (`docs/sdd/README.md`), con `/generate-module`.
 
 ## Architecture Pattern
@@ -38,9 +40,11 @@ Entre módulos se comparten services (el módulo dueño los exporta), nunca repo
   registrado con `APP_FILTER`.
 - **Interceptor:** `ResponseInterceptor` — `{ success: true, data }`; registrado con
   `APP_INTERCEPTOR`.
-- **Pipes:** `ZodValidationPipe` (bodies), y `ParseUUIDPipe` de Nest para ids.
+- **Pipes:** `ZodValidationPipe` (bodies) y `ParseIdPipe` (ids UUID; si no lo es, `400`
+  `VALIDATION_ERROR`).
 - **Exceptions:** `shared/exceptions/` — excepciones de dominio (extienden `HttpException`). Hoy:
-  `auth.exceptions.ts`.
+  `auth.exceptions.ts`, `request-body.exceptions.ts`, `request-params.exceptions.ts` y
+  `virtual-machine.exceptions.ts`.
 - **Database:** `src/database/` — `DatabaseModule` (conexión), `database.options.ts` (entidades y
   migraciones), `data-source.ts` (CLI de TypeORM), `migrations/`, `seed.ts`.
 - **Utils:** `shared/utils/pagination.util.ts` — `normalizePagination(page?, pageSize?)` en el
@@ -78,7 +82,7 @@ pnpm --filter @vm/backend test       # unit (src/**/*.spec.ts)
 pnpm --filter @vm/backend test:e2e   # test/*.e2e-spec.ts sobre AppModule (necesita TEST_DATABASE_URL)
 pnpm --filter @vm/backend db:migrate # compila y aplica migraciones
 pnpm --filter @vm/backend db:seed    # usuarios de prueba (SEED_*)
-pnpm --filter @vm/backend test -- -t "RF-<slug>-NN"
+pnpm --filter @vm/backend test -t "RF-<slug>-NN"       # o test:e2e -t "…"; sin `--`
 ```
 
 ## Testing

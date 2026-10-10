@@ -1,38 +1,38 @@
 # Especificación — Autenticación y control de acceso
 
-| Campo                         | Valor                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Estado                        | vigente                                                                                                |
-| Aprobada por / fecha          | Dayanna — 2026-10-10 (puerta G1)                                                                       |
-| Capacidad                     | `auth`                                                                                                 |
-| Responsable                   | Dayanna                                                                                                |
-| Constitución                  | revisada contra v1.0.0                                                                                 |
-| Última verificación vs código | 2026-10-10 (antes del primer commit; G4)                                                               |
-| Código                        | `apps/backend/src/modules/auth/`, `apps/backend/src/modules/users/`, `packages/shared-types/src/auth/` |
+| Campo                         | Valor                                                                                                                                                                                                                                                     |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Estado                        | vigente                                                                                                                                                                                                                                                   |
+| Aprobada por / fecha          | Dayanna — 2026-10-10 (puerta G1)                                                                                                                                                                                                                          |
+| Capacidad                     | `auth`                                                                                                                                                                                                                                                    |
+| Responsable                   | Dayanna                                                                                                                                                                                                                                                   |
+| Constitución                  | revisada contra v1.0.0                                                                                                                                                                                                                                    |
+| Última verificación vs código | 2026-10-10 (`2780fa8`)                                                                                                                                                                                                                                    |
+| Código                        | `apps/backend/src/modules/auth/`, `apps/backend/src/modules/users/`, `apps/backend/src/database/`, `apps/backend/src/app.setup.ts`, `apps/backend/src/shared/exceptions/`, `packages/shared-types/src/auth/`, `packages/shared-types/src/dto/auth.dto.ts` |
 
 ## Contexto y objetivo
 
-La API todavía no tiene usuarios, sesión ni control de acceso: el único endpoint es `GET /health`.
-Esta capacidad agrega la parte de backend de `auth` (`docs/product.md` → "Autenticación"): login con
+Antes de esta capacidad, la API no tenía usuarios, sesión ni control de acceso: el único endpoint
+era `GET /health`. Esta spec cubre la parte de backend de `auth` (`docs/product.md` → "Autenticación"): login con
 email y contraseña, sesión en una cookie `HttpOnly`, cierre de sesión, control de acceso por rol y
 el endurecimiento HTTP que exige OWASP. La parte de frontend (pantalla de login, rutas privadas en
 `proxy.ts`) entra en un cambio posterior de esta misma spec.
 
-### Análisis OWASP del estado actual
+### Análisis OWASP del estado previo
 
-Revisión del código existente contra el OWASP Top 10:2025 y los Cheat Sheets de OWASP
+Revisión del código anterior a esta capacidad contra el OWASP Top 10:2025 y los Cheat Sheets de OWASP
 (Authentication, Session Management, JSON Web Token, CSRF Prevention, Password Storage), consultados
 con Context7 el 2026-10-10.
 
 | #   | Categoría OWASP                           | Hallazgo                                                                                                                                                                                                                                                                                                                                                    | Severidad        | Dónde                                                                                         | Lo resuelve                                          |
 | --- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| H1  | A02 Security Misconfiguration             | Sin cabeceras de seguridad. Express envía `X-Powered-By: Express`, que revela la tecnología del servidor                                                                                                                                                                                                                                                    | Media            | `apps/backend/src/main.ts:12`                                                                 | RF-auth-10                                           |
+| H1  | A02 Security Misconfiguration             | Sin cabeceras de seguridad. Express envía `X-Powered-By: Express`, que revela la tecnología del servidor                                                                                                                                                                                                                                                    | Media            | `apps/backend/src/main.ts` (bootstrap previo)                                                 | RF-auth-10, RF-auth-16                               |
 | H2  | A01 Broken Access Control                 | No hay control de acceso: todo endpoint es público. Hoy solo existe `health`, pero el primer endpoint de negocio nacería abierto si la protección depende de acordarse de ponerla en cada controller                                                                                                                                                        | Alta (latente)   | `apps/backend/src/app.module.ts`                                                              | RF-auth-06                                           |
 | H3  | A07 Authentication Failures               | Sin limitación de tasa: nada frena la fuerza bruta cuando exista el login                                                                                                                                                                                                                                                                                   | Alta (latente)   | —                                                                                             | RF-auth-04                                           |
 | H4  | A06 Insecure Design                       | El navegador llega al backend por el rewrite de Next (`/api/*`). Next 16.4 reenvía con `httpxy` agregando solo `x-forwarded-host`: no agrega `X-Forwarded-For` con la IP real y deja pasar sin tocar el que mande el cliente. Un límite solo por IP agruparía a todos los usuarios en la IP de Next o, confiando en el header, se esquivaría falsificándolo | Alta (de diseño) | `apps/frontend/next.config.ts:10`; `next/dist/server/lib/router-utils/proxy-request.js:31-40` | RF-auth-04 (límite por IP de confianza y por cuenta) |
-| H5  | A02 Security Misconfiguration             | `GET /health` es público y devuelve `uptime`, que permite saber cuándo se reinició el servidor                                                                                                                                                                                                                                                              | Baja             | `apps/backend/src/modules/health/health.controller.ts:10`                                     | Fuera de alcance                                     |
+| H5  | A02 Security Misconfiguration             | `GET /health` es público y devuelve `uptime`, que permite saber cuándo se reinició el servidor                                                                                                                                                                                                                                                              | Baja             | `apps/backend/src/modules/health/health.controller.ts` (`check()`)                            | Fuera de alcance                                     |
 | —   | A10 Mishandling of Exceptional Conditions | Correcto: `AllExceptionsFilter` nunca devuelve el mensaje de un 5xx ni los issues de Zod                                                                                                                                                                                                                                                                    | —                | `apps/backend/src/shared/filters/all-exceptions.filter.ts`                                    | —                                                    |
-| —   | A02 / CORS                                | Correcto: lista explícita de orígenes y sin `credentials`. Debe seguir así: la cookie viaja en el mismo origen gracias al rewrite, así que no hace falta habilitar `credentials`, y habilitarlo ampliaría la superficie de CSRF                                                                                                                             | —                | `apps/backend/src/main.ts:15`                                                                 | RNF-auth-05                                          |
+| —   | A02 / CORS                                | Correcto: lista explícita de orígenes y sin `credentials`. Debe seguir así: la cookie viaja en el mismo origen gracias al rewrite, así que no hace falta habilitar `credentials`, y habilitarlo ampliaría la superficie de CSRF                                                                                                                             | —                | `apps/backend/src/main.ts` (`enableCors`)                                                     | RNF-auth-05                                          |
 | —   | A04 / C12                                 | Correcto: `.env` ignorado, solo `.env.example` versionado                                                                                                                                                                                                                                                                                                   | —                | `.gitignore`                                                                                  | —                                                    |
 
 ### Duración de la sesión
@@ -215,23 +215,26 @@ de negocio: provee el mecanismo (`@Roles(...)`) que usarán `virtual-machines` y
 - Limpieza periódica de sesiones expiradas en la base.
 - CRUD de usuarios o administración de roles.
 - `uptime` en `GET /health` (hallazgo H5): se propone un cambio aparte.
+- Endurecimiento propuesto en la revisión local y no aplicado por decisión del 2026-10-10: publicar
+  PostgreSQL solo en `127.0.0.1`, rechazar el `JWT_SECRET` de ejemplo con `NODE_ENV=production` y
+  `Cache-Control: no-store` en las respuestas de `/api/auth/*`.
 - Autenticación del socket de tiempo real (capacidad `realtime-vm-status`).
 
 ## Contratos visibles
 
-| Endpoint                | Acceso  | Request    | Respuesta 2xx (`data`)        | Errores                     |
-| ----------------------- | ------- | ---------- | ----------------------------- | --------------------------- |
-| `POST /api/auth/login`  | Público | `LoginDTO` | `{ user: AuthUser }` + cookie | 400, 401, 403 (Origin), 429 |
-| `POST /api/auth/logout` | Público | —          | `null` + cookie expirada      | 403 (Origin)                |
-| `GET /api/auth/me`      | Sesión  | —          | `{ user: AuthUser }`          | 401                         |
+| Endpoint                | Acceso  | Request    | Respuesta 2xx (`data`)        | Errores                                                               |
+| ----------------------- | ------- | ---------- | ----------------------------- | --------------------------------------------------------------------- |
+| `POST /api/auth/login`  | Público | `LoginDTO` | `{ user: AuthUser }` + cookie | 400 (`VALIDATION_ERROR`, `INVALID_BODY`), 401, 403 (Origin), 413, 429 |
+| `POST /api/auth/logout` | Público | —          | `null` + cookie expirada      | 400 (`INVALID_BODY`), 403 (Origin), 413                               |
+| `GET /api/auth/me`      | Sesión  | —          | `{ user: AuthUser }`          | 401                                                                   |
 
 Las rutas siguen la convención del repo (`@Controller('api/…')`) y pasan por el rewrite `/api/*`
 de Next, en vez del `POST /login` del pedido original (decidido en la clarificación).
 
 En `@vm/shared-types`: `LoginDTO` (schema y tipo, `src/dto/auth.dto.ts`), `ROLES` y `Role`,
 `AuthUser` (`{ id, email, role }`) en `src/auth/`. Códigos de error nuevos: `INVALID_CREDENTIALS`,
-`UNAUTHENTICATED`, `FORBIDDEN`, `TOO_MANY_REQUESTS`. Sus mensajes son para el usuario (el frontend
-muestra los 4xx tal cual):
+`UNAUTHENTICATED`, `FORBIDDEN`, `TOO_MANY_REQUESTS`, `INVALID_BODY` y `PAYLOAD_TOO_LARGE`. Sus
+mensajes son para el usuario (el frontend muestra los 4xx tal cual):
 
 | Code                  | Mensaje                                                    |
 | --------------------- | ---------------------------------------------------------- |
@@ -244,43 +247,49 @@ muestra los 4xx tal cual):
 
 ## Verificación contra la constitución
 
-| ID  | Aplica | Cómo se cumple                                                                                                   |
-| --- | ------ | ---------------------------------------------------------------------------------------------------------------- |
-| C1  | Sí     | Todo el comportamiento de `auth` está en esta spec antes de implementarse                                        |
-| C2  | Sí     | Spec antes que código, en el mismo PR                                                                            |
-| C3  | Sí     | G1 sobre esta spec; G2 sobre plan y tareas antes de tocar `apps/` y `packages/`                                  |
-| C4  | Sí     | Las seis dudas se resolvieron en la clarificación (2026-10-10); no queda ningún `[NECESITA ACLARACIÓN]`          |
-| C5  | Sí     | Los hallazgos del análisis OWASP se reportan arriba; no se corrige nada fuera de esta spec                       |
-| C6  | Sí     | Todos los RF salvo RF-auth-15 son Críticos (K1, K2, K3, K5) y tendrán test con su ID                             |
-| C7  | Sí     | Módulos `auth` y `users` con Controller → Service → Repository; los guards usan services, no repositorios        |
-| C8  | Sí     | `LoginDTO` (Zod) en el borde; Argon2id (RF-auth-12); OWASP Top 10:2025 (análisis y RF-auth-02, 04, 06–11)        |
-| C9  | Sí     | Sin `any`, funciones < 50 líneas (RNF-auth-07)                                                                   |
-| C10 | Sí     | `LoginDTO`, `ROLES`, `AuthUser` en `@vm/shared-types`                                                            |
-| C11 | Sí     | OWASP consultado con Context7; `helmet`, `@nestjs/throttler`, TypeORM, JWT y Argon2 se consultan en el plan      |
-| C12 | Sí     | Secreto JWT, credenciales de la base y del seed solo por variables de entorno; `.env.example` con valores de dev |
+| ID  | Aplica | Cómo se cumple                                                                                                                               |
+| --- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Sí     | Todo el comportamiento de `auth` está en esta spec antes de implementarse                                                                    |
+| C2  | Sí     | Spec antes que código, en el mismo PR                                                                                                        |
+| C3  | Sí     | G1 sobre esta spec; G2 sobre plan y tareas antes de tocar `apps/` y `packages/`                                                              |
+| C4  | Sí     | Las seis dudas se resolvieron en la clarificación (2026-10-10); no queda ningún `[NECESITA ACLARACIÓN]`                                      |
+| C5  | Sí     | Los hallazgos del análisis OWASP y de la revisión local se reportaron; los desvíos constan en el plan del cambio                             |
+| C6  | Sí     | Todos los RF salvo RF-auth-15 son Críticos (K1–K5) y tienen test con su ID; RF-auth-02 además, verificación manual                           |
+| C7  | Sí     | Módulos `auth` y `users` con Controller → Service → Repository; los guards usan services, no repositorios                                    |
+| C8  | Sí     | `LoginDTO` (Zod) en el borde; Argon2id (RF-auth-12); OWASP Top 10:2025 (análisis y RF-auth-02, 04, 06–11, 16)                                |
+| C9  | Sí     | Sin `any`, funciones < 50 líneas (RNF-auth-07)                                                                                               |
+| C10 | Sí     | `LoginDTO`, `ROLES`, `AuthUser` en `@vm/shared-types`                                                                                        |
+| C11 | Sí     | OWASP, `helmet`, `@nestjs/throttler`, TypeORM, `@nestjs/jwt`, `argon2` y Zod consultados con Context7 o en el paquete instalado (2026-10-10) |
+| C12 | Sí     | Secreto JWT, credenciales de la base y del seed solo por variables de entorno; `.env.example` con valores de dev                             |
 
 ## Verificación manual
 
 - **RF-auth-01 con Postman** (además del e2e): `POST /api/auth/login` con las credenciales de
-  prueba → la pestaña Cookies muestra la cookie con `HttpOnly`, `Secure`, `SameSite=Strict`,
-  `Path=/`; el body no contiene el token. `GET /api/auth/me` sin tocar nada responde el usuario.
+  prueba → la pestaña Cookies muestra `__Host-vm_session` con `HttpOnly`, `Secure`,
+  `SameSite=Strict`, `Path=/`; el body no contiene el token. `GET /api/auth/me` sin tocar nada
+  responde el usuario. Si Postman no reenvía la cookie `Secure` sobre `http://localhost` y se prueba
+  con `COOKIE_SECURE=false` (solo fuera de producción), la cookie se llama `vm_session` y no lleva
+  `Secure`: el resto de los atributos se verifica igual, y `Secure` se verifica en el e2e.
 
-- **RF-auth-02, paridad de tiempos** (un test automático de tiempos sería flaky): con Postman,
-  diez logins con un email inexistente y diez con un email existente y contraseña incorrecta. Las
+- **RF-auth-02, paridad de tiempos** (un test automático de tiempos sería flaky): cinco logins
+  con emails inexistentes y cinco con un email existente y contraseña incorrecta, dentro de una
+  ventana del rate limit (el límite por email corta en 5 por minuto; el de IP también, así que en
+  una instancia local se usan IPs distintas con `TRUST_PROXY=loopback` y `X-Forwarded-For`). Las
   medianas de tiempo de respuesta difieren en menos del 20 %, y las dos incluyen el costo de un hash
   Argon2id (decenas de milisegundos, no 1–2 ms).
 
 ## Dudas abiertas
 
 Ninguna. Resueltas en la clarificación del 2026-10-10: rutas `/api/auth/*`; sesión de 7 días por
-inactividad y 30 de máximo; 5 intentos por minuto por IP; verificación de `Origin`; `COOKIE_SECURE`;
+inactividad y 30 de máximo; 5 intentos por minuto por IP y por email; verificación de `Origin`; `COOKIE_SECURE`;
 seed por script.
 
 ## Historial
 
-| Fecha      | Cambio                                                                                                                                                                                      | PR  | Requisitos                     | Aprobó                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------ | ------------------------ |
-| 2026-10-10 | Creación: backend de `auth` (login, sesión deslizante, RBAC, endurecimiento OWASP)                                                                                                          | —   | RF-auth-01…15, RNF-auth-01…08  | Dayanna (G1)             |
-| 2026-10-10 | Delta en el plan: RF-auth-04 también por cuenta y con IP solo de proxy de confianza (hallazgo H4)                                                                                           | —   | RF-auth-04                     | Dayanna (G1, 2026-10-10) |
-| 2026-10-10 | Delta tras la revisión local: RF-auth-16 (cuerpos ilegibles), requisito de despliegue de RF-auth-04, seed bloqueado en producción, renovación cada 5 min (RF-auth-05), logout público       | —   | RF-auth-04, 05, 06, 10, 15, 16 | Dayanna (G1, 2026-10-10) |
-| 2026-10-10 | Validación (G4): implementado y verificado. RF-auth-02, paridad de tiempos manual: medianas de 60 y 61 ms (2,4 %), con 5+5 intentos en lugar de 10+10 porque el límite por email corta en 5 | —   | RF-auth-01…16                  | Dayanna (G4)             |
+| Fecha      | Cambio                                                                                                                                                                                                                        | PR  | Requisitos                     | Aprobó                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | ------------------------------ | ------------------------ |
+| 2026-10-10 | Creación: backend de `auth` (login, sesión deslizante, RBAC, endurecimiento OWASP)                                                                                                                                            | —   | RF-auth-01…15, RNF-auth-01…08  | Dayanna (G1)             |
+| 2026-10-10 | Delta en el plan: RF-auth-04 también por cuenta y con IP solo de proxy de confianza (hallazgo H4)                                                                                                                             | —   | RF-auth-04                     | Dayanna (G1, 2026-10-10) |
+| 2026-10-10 | Delta tras la revisión local: RF-auth-16 (cuerpos ilegibles), requisito de despliegue de RF-auth-04, seed bloqueado en producción, renovación cada 5 min (RF-auth-05), logout público                                         | —   | RF-auth-04, 05, 06, 10, 15, 16 | Dayanna (G1, 2026-10-10) |
+| 2026-10-10 | Validación (G4): implementado y verificado. RF-auth-02, paridad de tiempos manual: medianas de 60 y 61 ms (2,4 %), con 5+5 intentos en lugar de 10+10 porque el límite por email corta en 5                                   | —   | RF-auth-01…16                  | Dayanna (G4)             |
+| 2026-10-10 | Correcciones de redacción, sin cambio de RF: campo Código, análisis en pasado, códigos y errores de los contratos, verificaciones manuales ejecutables, tabla de constitución, endurecimiento no aplicado en fuera de alcance | —   | —                              | Dayanna                  |

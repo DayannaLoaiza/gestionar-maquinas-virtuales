@@ -7,11 +7,11 @@ Controller  →  Service  →  Repository  →  store
 (HTTP)         (logic)     (data access)   (PostgreSQL vía TypeORM)
 ```
 
-| Capa           | Hace                                                                                                                                                                    | No hace                                                      |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| **Controller** | Ruta, pipes (`ZodValidationPipe`, `ParseUUIDPipe`), `@HttpCode`. Extraer y **parsear** query/params (string → number/boolean). La forma HTTP: `{ recurso }` + `message` | Inyectar un repositorio. Filtrar, calcular, ordenar o mapear |
-| **Service**    | Reglas de negocio, orquestación, paginación (`buildPaginationMeta`), el mapeo a los modelos de `@vm/shared-types` (nunca sale `passwordHash`), lanzar las excepciones   | Tocar `req`/`res`                                            |
-| **Repository** | Acceso a datos y **filtros en la consulta** (en el `where`, no en memoria después). Envuelve el `Repository<T>` de TypeORM y devuelve entidades internas                | Reglas de negocio                                            |
+| Capa           | Hace                                                                                                                                                                  | No hace                                                      |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **Controller** | Ruta, pipes (`ZodValidationPipe`, `ParseIdPipe`), `@HttpCode`. Extraer y **parsear** query/params (string → number/boolean). La forma HTTP: `{ recurso }` + `message` | Inyectar un repositorio. Filtrar, calcular, ordenar o mapear |
+| **Service**    | Reglas de negocio, orquestación, paginación (`buildPaginationMeta`), el mapeo a los modelos de `@vm/shared-types` (nunca sale `passwordHash`), lanzar las excepciones | Tocar `req`/`res`                                            |
+| **Repository** | Acceso a datos y **filtros en la consulta** (en el `where`, no en memoria después). Envuelve el `Repository<T>` de TypeORM y devuelve entidades internas              | Reglas de negocio                                            |
 
 - **Un controller nunca inyecta un repositorio.** Si un endpoint necesita datos, hay un service que
   los pide (aunque solo los pase), porque ahí van a crecer las reglas.
@@ -50,9 +50,9 @@ Controller  →  Service  →  Repository  →  store
   ```
 - El pipe lanza el `ZodError` crudo: `AllExceptionsFilter` lo convierte en 400 `VALIDATION_ERROR`
   (los issues van solo al log).
-- Ids con `ParseUUIDPipe`. Ojo: su 400 dice `Validation failed (uuid is expected)` y el frontend
-  muestra los 4xx tal cual; si una pantalla empieza a construir esos ids, envolver el pipe con un
-  mensaje propio.
+- Ids con `ParseIdPipe` (`shared/pipes/parse-id.pipe.ts`): `ParseUUIDPipe` con un 400
+  `VALIDATION_ERROR`. El `ParseUUIDPipe` pelado diría `Validation failed (uuid is expected)`, y el
+  frontend muestra los 4xx tal cual.
 - Never use `class-validator` or `class-transformer`.
 
 ## Response Handling
@@ -180,4 +180,5 @@ Qué se testea y qué no: `docs/testing.md` (por riesgo, con el ID del RF en el 
 
 ## Existing Modules
 
-`health`, `users`, `auth` — revisar `src/modules/` antes de crear uno nuevo, para no duplicar.
+`health`, `users`, `auth`, `virtual-machines` — revisar `src/modules/` antes de crear uno nuevo,
+para no duplicar.

@@ -5,6 +5,7 @@ en cada PR que lo cambie (constitución, C2). Proceso y plantillas: `docs/sdd/RE
 
 Cada capacidad nueva es un cambio L y nace con su spec en esta tabla.
 
-| Capacidad | Spec                 | Estado  | Responsable | Código                                                              | Cambio en curso                        |
-| --------- | -------------------- | ------- | ----------- | ------------------------------------------------------------------- | -------------------------------------- |
-| `auth`    | [spec](auth/spec.md) | vigente | Dayanna     | `apps/backend/src/modules/auth/`, `apps/backend/src/modules/users/` | — (frontend de `auth`: próximo cambio) |
+| Capacidad          | Spec                             | Estado  | Responsable | Código                                                              | Cambio en curso                        |
+| ------------------ | -------------------------------- | ------- | ----------- | ------------------------------------------------------------------- | -------------------------------------- |
+| `auth`             | [spec](auth/spec.md)             | vigente | Dayanna     | `apps/backend/src/modules/auth/`, `apps/backend/src/modules/users/` | — (frontend de `auth`: próximo cambio) |
+| `virtual-machines` | [spec](virtual-machines/spec.md) | vigente | Dayanna     | `apps/backend/src/modules/virtual-machines/`                        | — (frontend de VMs: próximo cambio)    |

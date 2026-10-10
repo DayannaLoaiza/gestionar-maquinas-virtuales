@@ -23,9 +23,11 @@ dentro de una app si puede vivir acá.
   (`PaginationMeta`, `SortOrder`), el sobre de respuesta (`ApiSuccess<T>`, `ApiErrorBody`,
   `GENERIC_ERROR_CODES`) y `HealthStatus`.
 - `src/dto/<feature>.dto.ts` — schemas Zod de request. Hoy: `auth.dto.ts` (`LoginDTO`,
-  `NormalizedEmail`, `PASSWORD_MAX_LENGTH`).
+  `NormalizedEmail`, `PASSWORD_MAX_LENGTH`) y `virtual-machine.dto.ts` (`CreateVirtualMachineDTO`,
+  `UpdateVirtualMachineDTO`, `VmName`).
 - `src/<feature>/` — el modelo y las constantes de una capacidad. Hoy: `auth/` (`ROLES`, `Role`,
-  `ROLE_VALUES`, `AuthUser`).
+  `ROLE_VALUES`, `AuthUser`) y `virtual-machines/` (`VirtualMachine`, `VM_STATUSES`,
+  `VM_OPERATING_SYSTEMS`, `VM_LIMITS`, `VM_NAME_PATTERN`).
 - Todo se exporta desde `src/index.ts`.
 
 ## What belongs here

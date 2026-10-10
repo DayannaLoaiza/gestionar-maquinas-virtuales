@@ -1,7 +1,9 @@
 import { SessionEntity } from '@/modules/auth/session.entity';
 import { UserEntity } from '@/modules/users/user.entity';
+import { VirtualMachineEntity } from '@/modules/virtual-machines/virtual-machine.entity';
 
 import { CreateUsersAndSessions1791660176637 } from './migrations/1791660176637-CreateUsersAndSessions';
+import { CreateVirtualMachines1791668817376 } from './migrations/1791668817376-CreateVirtualMachines';
 
 import type { DataSourceOptions } from 'typeorm';
 
@@ -14,8 +16,8 @@ export function buildDataSourceOptions(url: string): DataSourceOptions {
   return {
     type: 'postgres',
     url,
-    entities: [UserEntity, SessionEntity],
-    migrations: [CreateUsersAndSessions1791660176637],
+    entities: [UserEntity, SessionEntity, VirtualMachineEntity],
+    migrations: [CreateUsersAndSessions1791660176637, CreateVirtualMachines1791668817376],
     migrationsTableName: 'migrations',
     synchronize: false,
     migrationsRun: false,

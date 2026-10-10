@@ -36,9 +36,9 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<INest
   return app;
 }
 
-/** Aplica las migraciones pendientes y vacía las tablas de la capacidad `auth`. */
+/** Aplica las migraciones pendientes y vacía las tablas de `auth` y `virtual-machines`. */
 export async function resetDatabase(app: INestApplication): Promise<void> {
   const dataSource = app.get(DataSource);
   await dataSource.runMigrations();
-  await dataSource.query('TRUNCATE TABLE "sessions", "users" CASCADE');
+  await dataSource.query('TRUNCATE TABLE "virtual_machines", "sessions", "users" CASCADE');
 }
