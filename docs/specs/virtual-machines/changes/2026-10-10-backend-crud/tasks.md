@@ -1,10 +1,10 @@
 # Tareas — backend del CRUD de máquinas virtuales
 
-| Campo                | Valor                                           |
-| -------------------- | ----------------------------------------------- |
-| Estado               | cerrada                                         |
-| Aprobada por / fecha | Dayanna — 2026-10-10 (puerta G2)                |
-| Cerrada              | 2026-10-10, sin commit aún (puerta G4, Dayanna) |
+| Campo                | Valor                                             |
+| -------------------- | ------------------------------------------------- |
+| Estado               | cerrada                                           |
+| Aprobada por / fecha | Dayanna — 2026-10-10 (puerta G2)                  |
+| Cerrada              | 2026-10-10, commit `43474d7` (puerta G4, Dayanna) |
 
 Plan: `plan.md` (esta carpeta). Spec: `docs/specs/virtual-machines/spec.md`. ⏸ = me detengo y
 muestro el diff (G3).

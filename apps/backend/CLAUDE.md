@@ -8,20 +8,22 @@ este archivo).
 
 NestJS 11 (CommonJS), Zod 4 (`ZodValidationPipe` + schemas de `@vm/shared-types`), `@nestjs/config`
 con validación Zod, PostgreSQL 16 con TypeORM 1.x, autenticación con JWT en cookie
-`HttpOnly` (`@nestjs/jwt`), Argon2id (`argon2`), `helmet`, `@nestjs/throttler`, Jest 30 + ts-jest +
-supertest.
+`HttpOnly` (`@nestjs/jwt`), Argon2id (`argon2`), `helmet`, `@nestjs/throttler`, Socket.io 4 (`@nestjs/websockets`,
+`@nestjs/platform-socket.io`), eventos internos con `@nestjs/event-emitter`, Jest 30 + ts-jest +
+supertest (y `socket.io-client` en los e2e de tiempo real).
 
 ## Modules
 
-| Module             | Description                                                                         |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| `health`           | `GET /health` (fuera de `/api`, `@Public()`)                                        |
-| `users`            | Entidad `users`, repositorio y `UsersService` (búsqueda, `ensureUser`, `AuthUser`)  |
-| `auth`             | `/api/auth/login`, `logout`, `me`; sesiones; guards globales; rate limit del login  |
-| `virtual-machines` | `GET`, `POST /api/vms`; `PUT`, `DELETE /api/vms/:id` (escritura solo Administrador) |
+| Module             | Description                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| `health`           | `GET /health` (fuera de `/api`, `@Public()`)                                                     |
+| `users`            | Entidad `users`, repositorio y `UsersService` (búsqueda, `ensureUser`, `AuthUser`)               |
+| `auth`             | `/api/auth/login`, `logout`, `me`; sesiones; guards globales; rate limit del login               |
+| `virtual-machines` | `GET`, `POST /api/vms`; `PUT`, `DELETE /api/vms/:id` (escritura solo Administrador)              |
+| `realtime`         | Socket.io en `/api/socket.io`: difunde `vm:status-changed`; cierra sockets al terminar la sesión |
 
 Spec de `users` + `auth`: `docs/specs/auth/spec.md`. Spec de `virtual-machines`:
-`docs/specs/virtual-machines/spec.md`. Cada capacidad nueva entra por el flujo SDD
+`docs/specs/virtual-machines/spec.md`. Spec de `realtime`: `docs/specs/realtime-vm-status/spec.md`. Cada capacidad nueva entra por el flujo SDD
 (`docs/sdd/README.md`), con `/generate-module`.
 
 ## Architecture Pattern
@@ -49,7 +51,9 @@ Entre módulos se comparten services (el módulo dueño los exporta), nunca repo
   migraciones), `data-source.ts` (CLI de TypeORM), `migrations/`, `seed.ts`.
 - **Utils:** `shared/utils/pagination.util.ts` — `normalizePagination(page?, pageSize?)` en el
   controller (tolerante, default 50, máx. 100) y `buildPaginationMeta(pagination, total)` en el
-  service (`{ page, pageSize, total, totalPages, hasNext, hasPrev }`).
+  service (`{ page, pageSize, total, totalPages, hasNext, hasPrev }`). `origin.util.ts`
+  (`isOriginAllowed`, la regla de `Origin` de `OriginGuard` y del socket) y
+  `security-headers.util.ts` (`createSecurityHeaders`, el `helmet` de Express y de Engine.IO).
 
 ## Contrato de error
 
@@ -68,7 +72,8 @@ default), `COOKIE_SECURE` (default `true`; `false` prohibido en producción), `T
 arranque (`main.ts`, `database/data-source.ts`, `database/seed.ts`).
 
 `helmet`, `cookie-parser`, el parser **solo JSON** (100 KB, errores → `INVALID_BODY` /
-`PAYLOAD_TOO_LARGE`) y `trust proxy` se registran en `configureHttpApp(app)` (`src/app.setup.ts`),
+`PAYLOAD_TOO_LARGE`), `trust proxy` y el adapter de Socket.io (`RealtimeIoAdapter`) se registran en
+`configureHttpApp(app)` (`src/app.setup.ts`),
 **antes** de `init()` y con `HTTP_APP_OPTIONS` (`bodyParser: false`): Nest registra su parser en
 `init()` antes que el middleware de módulos, y un error del parser saltaría helmet. La llaman
 `main.ts` y el harness de e2e, así el test prueba lo mismo que producción.

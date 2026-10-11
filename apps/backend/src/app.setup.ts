@@ -1,12 +1,13 @@
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
-import helmet from 'helmet';
 
+import { RealtimeIoAdapter } from './modules/realtime/realtime-io.adapter';
 import {
   InvalidRequestBodyException,
   RequestBodyTooLargeException,
 } from './shared/exceptions/request-body.exceptions';
+import { createSecurityHeaders } from './shared/utils/security-headers.util';
 
 import type { Env } from './config/env.validation';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -34,12 +35,14 @@ export function configureHttpApp(app: NestExpressApplication): void {
   // IP real del cliente solo desde un proxy de confianza (RF-auth-04).
   app.set('trust proxy', config.get('TRUST_PROXY', { infer: true }));
 
-  // HSTS solo en producción: sobre http://localhost el navegador lo ignora.
-  app.use(helmet({ strictTransportSecurity: isProduction }));
+  app.use(createSecurityHeaders(isProduction));
   app.use(cookieParser());
   // Solo JSON: sin parser `urlencoded`, un formulario HTML no puede mandarle datos a la API.
   app.useBodyParser('json', { limit: JSON_BODY_LIMIT });
   app.use(translateBodyParserError);
+  // Socket.io atiende `/api/socket.io` antes que Express: su borde HTTP (origen, CORS, helmet,
+  // cookies) lo arma este adapter, también antes de `init()`, que es cuando nacen los gateways.
+  app.useWebSocketAdapter(new RealtimeIoAdapter(app));
 }
 
 /**

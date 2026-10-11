@@ -6,3 +6,4 @@ export * from './auth/auth-user';
 export * from './dto/auth.dto';
 export * from './virtual-machines/virtual-machine';
 export * from './dto/virtual-machine.dto';
+export * from './realtime/realtime-events';

@@ -26,8 +26,10 @@ dentro de una app si puede vivir acá.
   `NormalizedEmail`, `PASSWORD_MAX_LENGTH`) y `virtual-machine.dto.ts` (`CreateVirtualMachineDTO`,
   `UpdateVirtualMachineDTO`, `VmName`).
 - `src/<feature>/` — el modelo y las constantes de una capacidad. Hoy: `auth/` (`ROLES`, `Role`,
-  `ROLE_VALUES`, `AuthUser`) y `virtual-machines/` (`VirtualMachine`, `VM_STATUSES`,
-  `VM_OPERATING_SYSTEMS`, `VM_LIMITS`, `VM_NAME_PATTERN`).
+  `ROLE_VALUES`, `AuthUser`), `virtual-machines/` (`VirtualMachine`, `VM_STATUSES`,
+  `VM_OPERATING_SYSTEMS`, `VM_LIMITS`, `VM_NAME_PATTERN`) y `realtime/` (`REALTIME_PATH`,
+  `REALTIME_CLIENT_OPTIONS`, `REALTIME_EVENTS`, `VmStatusChangedEvent`, `ServerToClientEvents`, `ClientToServerEvents`,
+  `RealtimeConnectionErrorData`: tipos puros, sin importar `socket.io`).
 - Todo se exporta desde `src/index.ts`.
 
 ## What belongs here

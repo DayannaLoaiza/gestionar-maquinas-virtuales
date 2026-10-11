@@ -17,9 +17,10 @@ Single Page Application para gestionar máquinas virtuales (VMs), con una API RE
 
 Visión completa, alcance y decisiones abiertas: [`docs/product.md`](docs/product.md).
 
-> **Estado:** está implementado el **backend de autenticación** (capacidad `auth`: login, sesión en
-> cookie `HttpOnly`, roles y endurecimiento OWASP; spec en `docs/specs/auth/spec.md`). El resto de
-> las capacidades se agrega con el flujo SDD (`docs/sdd/README.md`).
+> **Estado:** está implementado el backend de tres capacidades: `auth` (login, sesión en cookie
+> `HttpOnly`, roles y endurecimiento OWASP), `virtual-machines` (CRUD en `/api/vms`) y
+> `realtime-vm-status` (Socket.io en `/api/socket.io`: difusión de los cambios de estado). Specs en
+> `docs/specs/`. El resto se agrega con el flujo SDD (`docs/sdd/README.md`).
 
 | Paquete             | Ruta                     | Stack                                                     |
 | ------------------- | ------------------------ | --------------------------------------------------------- |
@@ -98,16 +99,20 @@ apps/
     database/        # Conexión TypeORM, data source del CLI, migraciones, seed
     modules/auth/    # Login, sesión, guards (origen, JWT, roles), rate limit
     modules/users/   # Entidad, repositorio y service de usuarios
+    modules/virtual-machines/ # CRUD de VMs
+    modules/realtime/         # Socket.io: gateway, adapter (borde HTTP), handshake, monitor de sesiones
     modules/health/  # GET /health
     shared/          # exceptions/, filters/ (sobre de error), interceptors/ (sobre de éxito),
-                     # pipes/ (ZodValidationPipe), utils/ (paginación)
+                     # pipes/ (ZodValidationPipe, ParseIdPipe), utils/ (paginación, origen,
+                     # cabeceras de seguridad)
     test/            # e2e (supertest sobre AppModule) y su harness (support/)
   frontend/src/
     app/             # Rutas (App Router)
     components/ui/   # DataTable genérica (TanStack)
     lib/             # env.ts, utils.ts (cn), api/ (api-error, fetch-wrapper, server-fetch)
 packages/
-  shared-types/src/         # common/ (sobre, paginación, ids), auth/ (roles, AuthUser), dto/
+  shared-types/src/         # common/ (sobre, paginación, ids), auth/ (roles, AuthUser), dto/,
+                            # virtual-machines/ (modelo y límites), realtime/ (eventos del socket)
   tsconfig/                 # base, nestjs, nextjs, library
   eslint-config/            # base, nest, next
 docker-compose.yml          # PostgreSQL 16 de desarrollo
@@ -156,6 +161,28 @@ con letra o dígito), único sin distinguir mayúsculas; `cores` de 1 a 128; `ra
 `disk` de 1 a 65 536 GB; `os` uno de `Ubuntu`, `Debian`, `Rocky Linux`, `Red Hat Enterprise Linux`,
 `Windows Server`; `status` `Encendida` o `Apagada`. Detalle: `docs/specs/virtual-machines/spec.md`.
 
+### Tiempo real (Socket.io)
+
+| Elemento            | Valor                                                                                                                                   |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Endpoint            | `/api/socket.io` sin barra final (namespace `/`), mismo puerto que la API; el navegador entra por Next                                  |
+| Cliente             | `REALTIME_CLIENT_OPTIONS` de `@vm/shared-types`: solo WebSocket y `addTrailingSlash: false`. Un handshake por long-polling recibe `400` |
+| Autenticación       | La cookie de sesión en el handshake. Un token en `auth`, la query o `Authorization` se ignora                                           |
+| Origen              | `Origin` fuera de `CORS_ORIGIN` → rechazo antes del upgrade. Sin `Origin` (Postman), se acepta                                          |
+| Servidor → cliente  | `vm:status-changed` con `{ item }`: la VM completa, igual que la respuesta del `PUT`                                                    |
+| Cliente → servidor  | Ninguno: el servidor ignora los eventos entrantes y cierra la conexión con un mensaje > 1 KB                                            |
+| Error de conexión   | `connect_error` con `data: { message, code }`: `UNAUTHENTICATED` o `INTERNAL_ERROR`                                                     |
+| Desconexión forzada | Motivo `io server disconnect`: tras el logout de esa sesión, o hasta 60 s después de vencer                                             |
+
+- Se emite solo cuando un `PUT /api/vms/:id` **cambia** el `status` (no si trae el mismo, ni en
+  altas, bajas o ediciones de otros campos), una vez a cada conexión, después de guardar.
+- Conectarse no renueva la sesión: solo las peticiones HTTP la extienden.
+- **Sin barra final:** Next redirige con `308` las URLs con barra final (`/api/socket.io/?…`, lo que
+  pide Socket.io por defecto), y un upgrade redirigido se corta. Por eso el cliente usa
+  `addTrailingSlash: false`.
+- Contrato tipado en `@vm/shared-types` (`REALTIME_CLIENT_OPTIONS`, `REALTIME_EVENTS`,
+  `ServerToClientEvents`, `ClientToServerEvents`). Detalle: `docs/specs/realtime-vm-status/spec.md`.
+
 ## Credenciales de prueba
 
 Las crea `pnpm --filter @vm/backend db:seed` a partir de las variables `SEED_*` de
@@ -175,6 +202,14 @@ Las crea `pnpm --filter @vm/backend db:seed` a partir de las variables `SEED_*` 
 2. `GET http://localhost:3001/api/auth/me`: Postman reenvía la cookie sola y responde el usuario.
 3. `POST http://localhost:3001/api/auth/logout` y otra vez `GET /api/auth/me` → `401`.
 4. Seis logins fallidos seguidos en menos de un minuto → `429` con `Retry-After`.
+5. **Tiempo real:** _New → Socket.IO_, URL `http://localhost:3001`, y en _Settings_ el
+   _Handshake path_ `/api/socket.io` y la versión v4. En _Headers_, `Cookie` con la cookie del
+   login (y, si quieres probar el origen, `Origin: http://localhost:3000`). En _Events_, escucha
+   `vm:status-changed` y conecta. Un `PUT http://localhost:3001/api/vms/<id>` con
+   `{ "status": "Encendida" }` (o `Apagada`) hace llegar el evento con la VM. Esto prueba la API
+   directa. A través de Next (`http://localhost:3000` con `pnpm dev`), el cliente tiene que pedir la
+   ruta sin barra final (`REALTIME_CLIENT_OPTIONS`); si el tuyo agrega la barra, Next responde
+   `308` y el socket no conecta.
 
 Si tu Postman no reenvía la cookie `Secure` sobre `http://localhost`, pon `COOKIE_SECURE=false` en
 `apps/backend/.env` (solo fuera de producción: la cookie pasa a llamarse `vm_session`) y reinicia
@@ -194,15 +229,70 @@ El límite de intentos de login cuenta por IP y por email. El rewrite de Next **
 - Nunca pongas un número de saltos sin el proxy: el `X-Forwarded-For` del cliente sería
   falsificable.
 
+### Despliegue: WebSocket
+
+El navegador abre el socket en su mismo origen (`/api/socket.io`) y Next reenvía el upgrade a la
+API. El proxy que esté delante de Next en producción tiene que reenviar también el upgrade de
+WebSocket en esa ruta (en nginx: `proxy_http_version 1.1` y las cabeceras `Upgrade` y
+`Connection`). Sin eso, el tiempo real no conecta. Hoy hay una sola instancia de la API: con varias
+haría falta el adapter de Redis de Socket.io.
+
 ## Arquitectura
 
-_Pendiente:_ diagrama de la interacción entre el cliente (Next.js), la API (NestJS) y el servicio de
-tiempo real (WebSockets), cuando exista la capacidad `realtime-vm-status`.
+El navegador solo habla con su mismo origen: Next reenvía `/api/*` a la API, también el upgrade de
+WebSocket. La API valida la sesión (cookie `HttpOnly`) en cada petición y en el handshake del
+socket. Los módulos se avisan por eventos internos (EventEmitter2), sin importarse entre sí.
+
+```mermaid
+flowchart LR
+  subgraph browser["Navegador"]
+    spa["SPA (Next.js)"]
+  end
+  subgraph next["Next.js :3000"]
+    rewrite["rewrite /api/*<br/>HTTP y upgrade WebSocket"]
+  end
+  subgraph api["API NestJS :3001"]
+    rest["REST /api/auth, /api/vms<br/>guards: origen, sesión, rol"]
+    bus(("EventEmitter2"))
+    ws["Socket.io /api/socket.io<br/>handshake: Origin + cookie"]
+  end
+  db[("PostgreSQL")]
+
+  spa -- "fetch /api/* + cookie" --> rewrite
+  spa -- "WebSocket /api/socket.io + cookie" --> rewrite
+  rewrite --> rest
+  rewrite --> ws
+  rest --> db
+  ws -- "valida la sesión" --> db
+  rest -- "vm.status-changed<br/>auth.session-revoked" --> bus
+  bus --> ws
+  ws -- "vm:status-changed { item }" --> spa
+```
+
+Un cambio de estado, de punta a punta:
+
+```mermaid
+sequenceDiagram
+  participant C as Cliente (navegador)
+  participant A as Administrador (navegador)
+  participant API as API NestJS (vía Next)
+  participant DB as PostgreSQL
+
+  C->>API: WebSocket /api/socket.io + cookie
+  API->>DB: valida la sesión (sin renovarla)
+  API-->>C: conectado, en la sala "vms"
+  A->>API: PUT /api/vms/:id { status: "Encendida" }
+  API->>DB: SELECT … FOR UPDATE, UPDATE, relectura
+  API-->>A: 200 { item }
+  API--)C: vm:status-changed { item }
+  API--)A: vm:status-changed { item } (sus otras pestañas)
+```
 
 ## Decisiones
 
 - `docs/constitution.md` — principios del proyecto (C1–C12).
-- `docs/specs/` — specs vivas por capacidad (hoy: `auth`).
+- `docs/specs/` — specs vivas por capacidad (hoy: `auth`, `virtual-machines` y
+  `realtime-vm-status`).
 - _Pendiente:_ resumen de por qué se eligió cada tecnología y cómo se estructuran las carpetas del
   frontend, a medida que se resuelvan las decisiones abiertas de `docs/product.md`.
 

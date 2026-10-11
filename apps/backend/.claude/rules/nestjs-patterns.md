@@ -178,7 +178,29 @@ Qué se testea y qué no: `docs/testing.md` (por riesgo, con el ID del RF en el 
 - **Editor:** para que el autocompletado genere `@/` también dentro de un mismo módulo, setting de
   usuario `"typescript.preferences.importModuleSpecifier": "non-relative"`.
 
+## WebSockets (módulo `realtime`, spec `docs/specs/realtime-vm-status/spec.md`)
+
+- **El gateway es un borde, como un controller:** autentica, agrupa en salas y difunde. No inyecta
+  repositorios ni tiene reglas de negocio (C7). La regla ("cambió el estado") vive en el service del
+  módulo dueño.
+- **Entre módulos, eventos internos** (`EventEmitter2`, `@nestjs/event-emitter`): el service emite
+  (`vm.status-changed`, `auth.session-revoked`) y el gateway escucha con `@OnEvent`. Así ni
+  `virtual-machines` ni `auth` importan `realtime` (evita el ciclo `auth → realtime → auth`). Los
+  nombres viven en `<módulo>.events.ts`. Un listener que difunde va con `{ async: true }` y atrapa
+  y registra sus errores: nunca cambia la respuesta HTTP.
+- **Borde HTTP del socket en `RealtimeIoAdapter`** (`configureHttpApp`): Engine.IO atiende
+  `/api/socket.io` antes que Express, así que ahí van `allowRequest` (origen), `cors`, `helmet` y
+  `cookie-parser`. Las opciones fijas (`path`, `transports: ['websocket']`,
+  `addTrailingSlash: false`, `maxHttpBufferSize`) van en el decorador del gateway
+  (`realtime.constants.ts`). Sin `addTrailingSlash: false` el socket no pasa por el rewrite de Next,
+  que redirige con `308` las URLs con barra final; los e2e van directo a Nest y no lo ven.
+- **Handshake:** la cookie con `SessionCookieService.read` y `AuthService.verifySession` (las
+  reglas de RF-auth-06 sin renovar la sesión). Nunca un token de `handshake.auth` ni de la query.
+- **Sin `@SubscribeMessage`** mientras el canal sea de solo bajada: las mutaciones van por REST.
+- **Tests:** e2e con `socket.io-client` sobre `app.listen(0)` (`test/support/socket-helpers.ts`).
+  Para afirmar que **no** se emitió nada, centinela: un cambio posterior que sí emite.
+
 ## Existing Modules
 
-`health`, `users`, `auth`, `virtual-machines` — revisar `src/modules/` antes de crear uno nuevo,
-para no duplicar.
+`health`, `users`, `auth`, `virtual-machines`, `realtime` — revisar `src/modules/` antes de crear
+uno nuevo, para no duplicar.

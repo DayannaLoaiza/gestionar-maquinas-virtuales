@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { SessionEntity } from './session.entity';
 
@@ -23,6 +23,11 @@ export class SessionRepository {
   /** La sesión con su usuario, en una sola consulta: el guard la pide en cada petición. */
   findWithUser(sessionId: string): Promise<SessionEntity | null> {
     return this.sessions.findOne({ where: { id: sessionId }, relations: { user: true } });
+  }
+
+  /** Varias sesiones con su usuario, en una sola consulta; los ids que no existen no vuelven. */
+  findManyWithUser(sessionIds: readonly string[]): Promise<SessionEntity[]> {
+    return this.sessions.find({ where: { id: In([...sessionIds]) }, relations: { user: true } });
   }
 
   async touch(sessionId: string, usedAt: Date): Promise<void> {

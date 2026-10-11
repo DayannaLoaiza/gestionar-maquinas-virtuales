@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 
 import type { IssuedToken } from './session-token.service';
 import type { Env } from '@/config/env.validation';
-import type { CookieOptions, Request, Response } from 'express';
+import type { CookieOptions, Response } from 'express';
+import type { IncomingMessage } from 'node:http';
 
 /**
  * Con `Secure`, el prefijo `__Host-` obliga al navegador a aceptarla solo por HTTPS, sin `Domain` y
@@ -24,8 +25,12 @@ export class SessionCookieService {
     this.name = this.isSecure ? SECURE_COOKIE_NAME : INSECURE_COOKIE_NAME;
   }
 
-  read(request: Request): string | undefined {
-    const cookies: unknown = request.cookies;
+  /**
+   * Recibe la petición de Express o la del handshake de Socket.io: las dos pasan por `cookie-parser`
+   * (RF-realtime-vm-status-03).
+   */
+  read(request: IncomingMessage): string | undefined {
+    const cookies: unknown = 'cookies' in request ? request.cookies : undefined;
     if (typeof cookies !== 'object' || cookies === null) return undefined;
     const value: unknown = (cookies as Record<string, unknown>)[this.name];
     return typeof value === 'string' && value.length > 0 ? value : undefined;

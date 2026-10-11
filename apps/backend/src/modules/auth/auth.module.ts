@@ -52,6 +52,6 @@ import type { JwtModuleOptions } from '@nestjs/jwt';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
-  exports: [AuthService],
+  exports: [AuthService, SessionCookieService],
 })
 export class AuthModule {}

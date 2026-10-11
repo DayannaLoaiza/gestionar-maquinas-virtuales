@@ -29,6 +29,10 @@ export interface SavedVirtualMachine {
   outcome: 'saved';
   vm: VirtualMachineEntity;
 }
+/** La VM ya actualizada y el estado que tenía justo antes de ese cambio. */
+export interface UpdatedVirtualMachine extends SavedVirtualMachine {
+  previousStatus: VmStatus;
+}
 export interface NameTaken {
   outcome: 'name-taken';
 }
@@ -81,20 +85,26 @@ export class VirtualMachineRepository {
   }
 
   /**
-   * `UPDATE … WHERE id` y relectura. Nunca `save()` con id: si un `DELETE` se adelanta, `save()`
-   * insertaría la fila de nuevo (RF-virtual-machines-10).
+   * En una transacción: bloquea la fila (`SELECT … FOR UPDATE`), la actualiza y la relee. El bloqueo
+   * da el estado anterior real aunque haya escrituras simultáneas (RF-realtime-vm-status-05), y un
+   * `DELETE` concurrente o espera o ya la borró: el `UPDATE` nunca la revive. Nunca `save()` con
+   * id: si un `DELETE` se adelanta, insertaría la fila de nuevo (RF-virtual-machines-10).
    */
   updateById(
     id: string,
     changes: VirtualMachineChanges,
-  ): Promise<SavedVirtualMachine | NameTaken | NotFound> {
-    return this.catchNameTaken(async () => {
-      const result = await this.vms.update({ id }, changes);
-      if (result.affected === 0) return NOT_FOUND;
+  ): Promise<UpdatedVirtualMachine | NameTaken | NotFound> {
+    return this.catchNameTaken(() =>
+      this.vms.manager.transaction(async (manager): Promise<UpdatedVirtualMachine | NotFound> => {
+        const vms = manager.getRepository(VirtualMachineEntity);
+        const current = await vms.findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+        if (!current) return NOT_FOUND;
 
-      const vm = await this.vms.findOneBy({ id });
-      return vm ? { outcome: 'saved', vm } : NOT_FOUND;
-    });
+        await vms.update({ id }, changes);
+        const vm = await vms.findOneByOrFail({ id });
+        return { outcome: 'saved', vm, previousStatus: current.status };
+      }),
+    );
   }
 
   /** @returns si había una fila con ese id. */
