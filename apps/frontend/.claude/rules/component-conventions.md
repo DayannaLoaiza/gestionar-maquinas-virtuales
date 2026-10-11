@@ -1,8 +1,6 @@
 # Component Conventions — apps/frontend
 
-> Convenciones adoptadas de Visor. **Aún no instalado:** Radix UI, shadcn, `class-variance-authority`,
-> `tw-animate-css`, `sonner`, `react-hook-form`. Lo que depende de ellas aplica desde que se
-> agreguen; mientras tanto no se escribe una alternativa propia que después haya que migrar.
+> Convenciones adoptadas de Visor.
 
 ## Pre-Implementation Audit (MANDATORY)
 
@@ -17,14 +15,43 @@ If a similar component exists, extend or compose it — do not duplicate.
 
 ## Directory Structure
 
-- `src/components/ui/` — primitivos reutilizables y los wrappers de Radix (cuando se instale). Hoy:
-  `data-table/` (tabla genérica de TanStack: orden, búsqueda global, paginación).
-- `src/components/svg/` — íconos como componentes React (ver `icon-conventions.md`).
-- `src/features/<feature>/` — lo propio de una feature: `components/` (columnas, vistas, badges
-  locales). Todavía no hay features.
-- `src/lib/` — utilidades (`utils.ts` con `cn`, `env.ts`) y `api/` (cliente HTTP, ver
-  `nextjs-patterns.md`).
-- `src/types/api.ts` — formas de respuesta de cada endpoint (se crea con el primero).
+Atomic Design, mapeado a carpetas por responsabilidad (no hay carpetas `atoms/`, `molecules/`…: el
+alias `ui` de shadcn fija `components/ui/`):
+
+| Nivel      | Carpeta                                                                                                                                    | Qué va                                                                                                                                                                                                                                                              |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Átomos     | `components/svg/`, `components/ui/`                                                                                                        | Íconos; primitivos de una pieza (`Button`, `Skeleton`)                                                                                                                                                                                                              |
+| Moléculas  | `components/ui/`, `components/feedback/`                                                                                                   | Wrappers de Radix (`DropdownMenu`, `Sheet`), `Empty*`, `Toaster`; `EmptyState` y skeletons listos para usar                                                                                                                                                         |
+| Organismos | `components/layout/`, `components/theme/`, `components/auth/`, `components/providers/`, `components/realtime/`, `features/<x>/components/` | El shell (`AppShell`, `AppSidebar`, `AppHeader`, `StandalonePage`…), `ThemeToggle`, `AuthProvider`, `AdminOnly`, `QueryProvider`, `RealtimeProvider` y su indicador; las vistas de cada feature (`features/auth/`, `features/vms/`, `features/resource-dashboard/`) |
+| Plantillas | `app/**/layout.tsx`                                                                                                                        | `app/layout.tsx` (raíz) y `app/(panel)/layout.tsx` (shell)                                                                                                                                                                                                          |
+| Páginas    | `app/**/page.tsx`, `app/not-found.tsx`                                                                                                     | Una por ruta                                                                                                                                                                                                                                                        |
+
+- `src/components/ui/` — **solo** primitivos genéricos: la frontera con Radix y `sonner`
+  (`component-imports.md`). También `data-table/` (tabla genérica de TanStack).
+- `src/components/feedback/` — lo que consumen las features para carga y vacío, con props
+  tipadas y textos por props.
+- `src/config/` — configuraciones tipadas `as const` (p. ej. `navigation.ts`, las secciones de la
+  barra lateral).
+- `src/components/auth/` — lo de la sesión que usan todas las features: `AuthProvider`,
+  `useAuthStore`, `AdminOnly` (`component-imports.md`, "Controles según el rol") y `SessionSync`.
+- `src/features/<feature>/` — lo propio de una feature: `components/` (vistas, badges locales) y,
+  si hace falta, `hooks/` y `store/`. Hoy: `features/auth/` (login, menú de la persona),
+  `features/vms/` (Panel, tarjetas, formularios, modales, mutaciones optimistas) y
+  `features/resource-dashboard/` (indicadores y gráficos).
+- `src/components/realtime/` — el tiempo real del panel: `RealtimeProvider`, `RealtimeIndicator` y
+  los hooks de `realtime-context.ts`.
+- `src/lib/` — utilidades (`utils.ts` con `cn`, `env.ts`), `api/` (cliente HTTP, ver
+  `nextjs-patterns.md`), `auth/` (store de Zustand, sesión del servidor, `proxy`, navegación a
+  `/login`, canal entre pestañas), `theme/` (preferencia, script inicial y store del tema),
+  `query/`, `vms/`, `realtime/` y `resource-dashboard/` (lógica pura, sin React, testeable sola).
+- `src/schemas/` — schemas de formulario solo del frontend (`forms-conventions.md`).
+- `src/types/api.ts` — formas de respuesta de cada endpoint.
+
+## Textos
+
+- En español, sin librería de i18n (RNF-app-shell-03). Un componente reutilizable recibe sus textos
+  por props tipadas; los textos propios del shell viven en configuraciones `as const` (`config/`,
+  `theme-options.ts`).
 
 ## SVG Icons
 
@@ -57,9 +84,14 @@ If a similar component exists, extend or compose it — do not duplicate.
 
 - Entrada/salida de overlays con las utilidades de `tw-animate-css` (`animate-in`, `fade-in-0`,
   `zoom-in-95`…), como en shadcn. No escribir keyframes propios para eso.
+- La única animación propia es `animate-vm-flash` (`globals.css`, `@theme`): el destello de una
+  tarjeta que cambió en tiempo real. Una capa con `bg-highlight/15 ring-highlight` que se
+  desvanece; `key` la reinicia con cada evento.
+- Gráficos (Recharts): la animación es de JavaScript y la regla global no la alcanza; se apaga con
+  `usePrefersReducedMotion()` (`isAnimationActive`).
 - Una regla global de `prefers-reduced-motion` en `globals.css` acorta animaciones (a 0.01ms, no
-  `none`: Radix espera `animationend`) y exceptúa `animate-spin`. No agregar `motion-reduce:` por
-  componente.
+  `none`: Radix espera `animationend`), las deja en una sola iteración (el pulso de los skeletons
+  se detiene) y exceptúa `animate-spin`. No agregar `motion-reduce:` por componente.
 
 ## Design System Tokens
 
@@ -69,6 +101,11 @@ If a similar component exists, extend or compose it — do not duplicate.
 - 8px grid: xs=8px, sm=16px, md=24px, lg=32px, xl=48px, 2xl=64px.
 - **Foco:** contorno `ring` en `:focus-visible`, definido una vez en `globals.css` (`@layer base`);
   un componente con foco propio pone `outline-none` + su anillo.
+- **Modo oscuro por clase:** `.dark` en `<html>` (la pone el script del tema) cambia los tokens
+  semánticos, y `@custom-variant dark` hace que `dark:` siga la elección de la persona, no el
+  sistema operativo. Nunca `@media (prefers-color-scheme)` en un componente.
+- **Bordes:** Tailwind 4 pinta `border` con `currentColor`; toda línea lleva `border-border` (o su
+  color explícito).
 
 ### Paleta — solo existe lo que define `theme.css`
 
@@ -109,11 +146,19 @@ que es superficie o texto genérico, en vez de escalas + `dark:`.
 - **Tonos de `StatusBadge`:** `success`, `warning`, `error`; `info` usa `primary`; `neutral` usa
   `muted`/`muted-foreground`.
 - **Gradiente de marca:** `bg-linear-to-r from-primary-500 to-secondary-500`. Sin otros colores.
-- **Gráficos y estilos inline:** colores como `var(--color-primary-500)`, nunca hex en TS.
+- **Gráficos y estilos inline:** colores como `var(--color-…)`, nunca hex en TS. Los gráficos usan
+  los tokens semánticos `chart-active` (claro: `primary-500`; oscuro: `secondary-500`) y
+  `chart-inactive` (claro: `surface-500`; oscuro: `navy-400`), validados para daltonismo y con
+  contraste de al menos 3:1 contra la tarjeta. El resalte del tiempo real usa `highlight`
+  (`secondary-500`).
 - **Overlays:** `bg-black/50`. La opacidad va con `/NN`: `bg-opacity-*` es de Tailwind v3.
 - **No usar tokens de shadcn** sin definir (`bg-primary`, `bg-secondary`, `bg-accent`, `bg-popover`,
   `bg-input`, `bg-destructive`): al copiar un componente de shadcn, traducirlos a esta tabla. La
-  guarda los marca.
+  guarda los marca. Equivalencias usadas: `popover` → `card`, `accent` → `muted`, `destructive` →
+  `error-*` (texto 700, en oscuro 500), `primary` → `primary-500`.
+- **Skeleton:** `bg-border/70` y, en oscuro, `dark:bg-navy-700/70`. Es la única excepción a "tokens
+  en vez de escala + `dark:`": `muted` casi no se ve sobre una tarjeta blanca y en oscuro se confunde
+  con los encabezados.
 - **Agregar un color** es una decisión de diseño: `theme.css` + esta tabla.
 
 ## Performance

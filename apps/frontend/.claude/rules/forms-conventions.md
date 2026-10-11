@@ -1,7 +1,8 @@
 # Form Conventions — apps/frontend
 
-> **Aún no instalado:** `react-hook-form`, `@hookform/resolvers`, `sonner`. Hoy no hay formularios;
-> el primero que se escriba sigue este patrón.
+> Formularios de referencia: el login (`src/features/auth/components/login-form.tsx`), que espera la
+> respuesta, y el de VMs (`src/features/vms/components/vm-form.tsx`), optimista (ver "Formularios
+> optimistas").
 
 ## Mandatory Stack
 
@@ -13,7 +14,8 @@ Every form MUST use:
 ## Schema Location
 
 - Schemas shared with backend → `packages/shared-types/src/dto/`
-- Schemas only used in frontend → `src/schemas/` (create directory if needed)
+- Schemas only used in frontend → `src/schemas/` (p. ej. `vm-form.ts`), reutilizando las piezas del
+  DTO (`CreateVirtualMachineDTO.shape.*`, `VmName`) para no duplicar reglas ni mensajes
 - NEVER define Zod schemas inline in component files
 
 ## Type Inference
@@ -70,9 +72,12 @@ export function CreateThingForm() {
    - ⚠️ **El fallback no es decorativo: es el texto que se ve** cuando el status es 5xx o 429, o el
      `code` es `VALIDATION_ERROR` / `INTERNAL_ERROR`, y ante cualquier fallo que no sea un
      `ApiError` (red, HTML del proxy, un bug dentro del `try`). Escribirlo como copy final.
-   - **Excepción — pantallas de autenticación** (cuando existan): en login y recuperación de
-     contraseña **no** se muestra el mensaje del API; el texto se decide en el front por status,
-     para no revelar si una cuenta existe.
+   - **Excepción — pantallas de autenticación** (hoy, el login): **no** se muestra el mensaje del
+     API; el texto se decide en el front por status (`loginErrorMessage`, con los textos de
+     `LOGIN_ERROR_MESSAGES` en `src/config/auth.ts`), para no revelar si una cuenta existe.
+   - Si el error del API se muestra por toast y el formulario se queda, llamar además a
+     `setError('root.server', …)` sin pintarlo: si no, RHF da el envío por exitoso y
+     `isSubmitSuccessful` deja el botón deshabilitado.
 5. `isSubmitting` — disable the submit button and inputs during submission.
 6. Data transformation — transform `FormData` to the API DTO before sending (strip
    `confirmPassword`, convert string ids, etc.).
@@ -82,8 +87,33 @@ export function CreateThingForm() {
 9. **Un solo canal de confirmación:** si el formulario **navega**, confirma con toast; si **se
    queda** en la pantalla, con un panel inline. Nunca los dos.
    - Tras el éxito: `notify.success()` + `router.replace()` (no `push`: el formulario ya se envió).
-     **Nunca `window.location.href`**: una recarga completa desmonta el `<Toaster />`.
+     **Nunca `window.location.href`**: una recarga completa desmonta el `<Toaster />`. Única
+     excepción, a propósito: cerrar sesión y el `401` cargan `/login` con `goToLogin()`
+     (`window.location.replace`), para descartar todo dato privado en memoria; el aviso lo muestra
+     `/login` (spec `auth`, hallazgo F3).
    - Bloquear el doble submit con `disabled={isSubmitSuccessful}` (`isSubmitting` vuelve a `false`
      antes de que termine la navegación). No replicarlo con un `useState` propio.
    - **No agregar `router.refresh()`** después de `replace()`: refresca la ruta que se está dejando.
      Las páginas ya piden datos frescos (`serverFetch` sin Data Cache).
+
+## Formularios optimistas
+
+Cuando la pantalla muestra el resultado al instante y no espera la respuesta (hoy, crear y editar
+una VM, spec `virtual-machines` RF-16…21), cambian algunas reglas de arriba:
+
+- **Validación mientras se escribe:** `mode: 'all'` (al escribir y al salir del campo) en vez de
+  `'onBlur'`. El botón de enviar se deshabilita con `!isValid`, y junto a él un texto dice qué
+  falta (campos obligatorios vacíos o "Corrige los campos marcados"), asociado con
+  `aria-describedby`.
+- **Con transformaciones** (texto → número), `useForm<z.input<…>, unknown, z.output<…>>`: los tres
+  genéricos se infieren del schema, nunca se escriben a mano.
+- **Números como texto:** `<input type="text" inputMode="numeric">` y el schema convierte. Con
+  `type="number"`, `2,5` llega como `""` y no se distingue de un campo vacío.
+- **Al enviar no se espera:** el formulario dispara la mutación del hook de la feature y se cierra.
+  No hay `isSubmitting` ni `isSubmitSuccessful`; el toast de éxito o de error lo da el hook cuando
+  la API responde (sus callbacks van en `useMutation`, no en `mutate`, porque el formulario ya se
+  desmontó).
+- **Edición:** el cuerpo del `PUT` lleva solo los campos que cambiaron (`buildUpdatePayload`), para
+  no pisar con valores viejos un cambio de otra persona.
+- **Si la creación falla,** el formulario se reabre solo con lo escrito y, con `409`, el error en el
+  campo (`setError` + `setFocus`), sin tapar otro modal abierto.

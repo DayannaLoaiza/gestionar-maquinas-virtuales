@@ -1,27 +1,46 @@
 import 'server-only';
 
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 
 import { clientEnv } from '@/lib/env';
 
 export type ServerFetchResult<T> = { ok: true; data: T } | { ok: false; status: number };
 
-/** Status sintético para una falla sin respuesta HTTP (red, JSON inválido). */
+/** Status sintético para una falla sin respuesta HTTP (red, tiempo agotado, JSON inválido). */
 const NETWORK_ERROR_STATUS = 0;
+
+/**
+ * Una API que acepta la conexión y no responde no puede colgar el render: pasado este tiempo, la
+ * página cae en `error.tsx` con "Reintentar" (RF-auth-24).
+ */
+const SERVER_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Las cookies que el navegador mandó en el pedido de la página, tal cual (la cabecera `cookie`
+ * cruda, sin volver a codificar los valores): las mismas que mandaría por el rewrite `/api/*`.
+ */
+async function forwardedCookies(): Promise<Record<string, string>> {
+  const cookie = (await headers()).get('cookie');
+  return cookie ? { cookie } : {};
+}
 
 /**
  * Como `serverFetch`, pero conserva el status del error para que la página pueda distinguir "no
  * existe o no hay acceso" (`notFound()`) de "el API falló" (`error.tsx`).
  *
- * Cuando exista autenticación, este es el único lugar que reenvía las cookies de sesión al backend.
+ * Es el único camino servidor → API que reenvía la sesión (RF-app-shell-15): las cookies del pedido
+ * de la página, solo a `NEXT_PUBLIC_API_URL`. `no-store` siempre, porque toda respuesta depende de
+ * la sesión (RF-auth-06) y la Data Cache de Next podría servírsela a otra persona.
  */
-export async function serverFetchResult<T>(
-  path: `/api/${string}`,
-  revalidate = 0,
-): Promise<ServerFetchResult<T>> {
+export async function serverFetchResult<T>(path: `/api/${string}`): Promise<ServerFetchResult<T>> {
+  // Fuera del try: en el prerender, `headers()` lanza a propósito para volver dinámica la ruta.
+  const cookieHeaders = await forwardedCookies();
   try {
     const response = await fetch(`${clientEnv.NEXT_PUBLIC_API_URL}${path}`, {
-      next: { revalidate },
+      cache: 'no-store',
+      headers: cookieHeaders,
+      signal: AbortSignal.timeout(SERVER_FETCH_TIMEOUT_MS),
     });
     if (!response.ok) return { ok: false, status: response.status };
 
@@ -49,13 +68,13 @@ export function dataOrNotFound<T>(result: ServerFetchResult<T>, failureMessage: 
 }
 
 /**
- * Fetch de servidor para Server Components: arma la URL, desenvuelve `data` y devuelve `null` ante
- * cualquier error. `revalidate = 0` por defecto: datos siempre frescos.
+ * Fetch de servidor para Server Components: arma la URL, reenvía la sesión, desenvuelve `data` y
+ * devuelve `null` ante cualquier error. Datos siempre frescos (`no-store`).
  *
  * @example
  * const result = await serverFetch<{ things: Thing[] }>('/api/things?pageSize=100');
  */
-export async function serverFetch<T>(path: `/api/${string}`, revalidate = 0): Promise<T | null> {
-  const result = await serverFetchResult<T>(path, revalidate);
+export async function serverFetch<T>(path: `/api/${string}`): Promise<T | null> {
+  const result = await serverFetchResult<T>(path);
   return result.ok ? result.data : null;
 }

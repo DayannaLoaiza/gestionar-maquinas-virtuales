@@ -2,8 +2,8 @@
 
 ## Source
 
-ALL icons MUST come from `src/components/svg/` as React SVG components. (Hoy no hay ninguno: el
-primero crea la carpeta.)
+ALL icons MUST come from `src/components/svg/` as React SVG components (de Tabler, versión 3.49.0
+para los actuales).
 
 ## Creating New Icons
 

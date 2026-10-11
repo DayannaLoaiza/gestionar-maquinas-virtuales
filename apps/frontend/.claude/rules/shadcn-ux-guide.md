@@ -1,13 +1,15 @@
 # shadcn/ui Component Selection Guide — apps/frontend
 
-> **Aún no instalado:** shadcn/Radix. Esta guía decide qué componente usar en cuanto existan; los
-> nombres son los wrappers de `src/components/ui/` (ver `component-imports.md`).
+> Los nombres son los wrappers de `src/components/ui/` (ver `component-imports.md`). Hoy existen
+> `Button`, `Input`, `Label`, `NativeSelect`, `Switch`, `Dialog`, `AlertDialog`, `Skeleton`,
+> `DropdownMenu`, `Sheet`, `StatusBadge` y `Toaster`/`notify`; el resto se crea con su primer uso,
+> copiado del registro de shadcn.
 
 ## Dialogs, Overlays, and Forms
 
 | Need                                        | Component                            | Why                                                   |
 | ------------------------------------------- | ------------------------------------ | ----------------------------------------------------- |
-| Confirm destructive action (delete a VM)    | `Dialog` with confirmation step      | Blocks until user decides                             |
+| Confirm destructive action (delete a VM)    | `AlertDialog`                        | Blocks until user decides; focuses "Cancelar"         |
 | Quick modal form (2-3 fields, simple input) | `Dialog`                             | Interactive content, closes with Esc or click outside |
 | Complex form (4+ fields, conditional logic) | Dedicated route (`/create`, `/edit`) | Full page, deeplinking, back button, consistency      |
 | Side panel with long content                | `Sheet`                              | Doesn't fully hide context, scrollable                |
@@ -17,13 +19,19 @@
 as separate pages with dedicated form components: deeplinking, browser back button and Server
 Component data loading.
 
+**Excepción — formularios optimistas sobre un listado:** cuando el resultado tiene que verse al
+instante en el listado que está detrás (crear y editar VMs, DF2 de la spec `virtual-machines`), el
+formulario va en un `Dialog` sobre la página. Un clic fuera no lo cierra (`onInteractOutside` con
+`preventDefault()`), para no perder lo escrito. Confirmar una eliminación: `AlertDialog`.
+
 ## Menus and Navigation
 
 | Need                                   | Component      | Why                                                                                      |
 | -------------------------------------- | -------------- | ---------------------------------------------------------------------------------------- |
 | Actions on an item (3 dots, user menu) | `DropdownMenu` | Keyboard nav, submenus, standard pattern                                                 |
 | Search + select inside a control       | `Command`      | Live filtering                                                                           |
-| Change a state by picking it           | `StatusSelect` | `DropdownMenu` + `RadioGroup` showing each state's color (e.g. VM power)                 |
+| Change a state by picking it           | `StatusSelect` | `DropdownMenu` + `RadioGroup` showing each state's color                                 |
+| Turn something on or off at once       | `Switch`       | One click, no confirmation, with an accessible name (e.g. VM power: "Encender web-01")   |
 | Selection from options (<10)           | `Select`       | Native: accessible, no JS, system picker on mobile                                       |
 | Long list, with search or groups       | `Combobox`     | Accent-insensitive search and group headers; draws max 50 rows (cmdk doesn't virtualize) |
 

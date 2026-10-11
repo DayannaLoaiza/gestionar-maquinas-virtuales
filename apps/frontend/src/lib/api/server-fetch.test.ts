@@ -11,13 +11,24 @@ const notFound = vi.hoisted(() =>
 );
 vi.mock('next/navigation', () => ({ notFound }));
 
+/** La cabecera `cookie` del pedido de la página que está renderizando Next (borde: `next/headers`). */
+const incomingRequest = vi.hoisted((): { cookie: string | null } => ({ cookie: null }));
+vi.mock('next/headers', () => ({
+  headers: () =>
+    Promise.resolve(
+      new Headers(incomingRequest.cookie === null ? {} : { cookie: incomingRequest.cookie }),
+    ),
+}));
+
 afterEach(() => {
   vi.unstubAllGlobals();
   notFound.mockClear();
+  incomingRequest.cookie = null;
 });
 
 describe('serverFetchResult', () => {
-  it('desenvuelve data y arma la URL con la base del backend', async () => {
+  it('RF-app-shell-15 reenvía las cookies del pedido al backend, sin caché, y desenvuelve data', async () => {
+    incomingRequest.cookie = '__Host-vm_session=eyJhbGciOiJIUzI1NiJ9.e30.firma; otra=1';
     const fetchMock = vi
       .fn()
       .mockResolvedValue(Response.json({ success: true, data: { status: 'ok' } }));
@@ -27,9 +38,15 @@ describe('serverFetchResult', () => {
       ok: true,
       data: { status: 'ok' },
     });
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/health', {
-      next: { revalidate: 0 },
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('http://localhost:3001/api/health');
+    // Solo estas opciones: ni caché ni `revalidate`. El `signal` es el tiempo máximo (RF-auth-24).
+    expect(Object.keys(init).sort()).toEqual(['cache', 'headers', 'signal']);
+    expect(init.cache).toBe('no-store');
+    expect(init.headers).toEqual({
+      cookie: '__Host-vm_session=eyJhbGciOiJIUzI1NiJ9.e30.firma; otra=1',
     });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
   it('conserva el status de un error', async () => {

@@ -46,17 +46,25 @@ TypeORM, sesión en cookie `HttpOnly`, guards globales, rate limit, helmet), el 
 `virtual-machines`** (`docs/specs/virtual-machines/spec.md`: CRUD de VMs en `/api/vms` con
 escritura solo para Administrador) y el **backend de `realtime-vm-status`**
 (`docs/specs/realtime-vm-status/spec.md`: Socket.io en `/api/socket.io`, solo WebSocket,
-autenticado con la cookie, que difunde `vm:status-changed`). No agregues funcionalidad
-de ejemplo ni datos semilla salvo los que pida una spec aprobada (p. ej., los usuarios de prueba de
-`db:seed`): cada capacidad entra por SDD.
+autenticado con la cookie, que difunde `vm:status-changed`) y la **base del frontend**
+(`docs/specs/app-shell/spec.md`: tema Claro/Oscuro/Sistema sin parpadeo, shell del panel con
+barra lateral, toasts, skeletons, estados vacíos y `serverFetch` con la sesión) y el **frontend de
+`auth`** (`docs/specs/auth/spec.md`, RF-auth-17…34: login en `/login`, estado con Zustand,
+`requireUser()` en cada página del panel, `proxy.ts` que reenvía la renovación de la cookie,
+`AdminOnly`, cabeceras de seguridad) y el **frontend de `virtual-machines`, `resource-dashboard` y
+`realtime-vm-status`** (cambio `2026-10-11-frontend-vms`: Panel con las VMs en tarjetas, formularios
+en modal, optimistic UI con TanStack Query y versiones por `updatedAt`, panel de recursos con
+Recharts, cliente de Socket.io con resalte de la tarjeta que cambió). No agregues funcionalidad
+de ejemplo ni datos semilla salvo los que pida una spec aprobada (p. ej., los usuarios de prueba y
+las VMs de ejemplo de `db:seed`): cada capacidad entra por SDD.
 
-| Package             | Path                      | Description                                                     |
-| ------------------- | ------------------------- | --------------------------------------------------------------- |
-| `@vm/backend`       | `apps/backend/`           | NestJS 11, Controller → Service → Repository (`CLAUDE.md`)      |
-| `@vm/frontend`      | `apps/frontend/`          | Next.js 16 App Router, Tailwind 4, TanStack Table (`CLAUDE.md`) |
-| `@vm/shared-types`  | `packages/shared-types/`  | Schemas Zod de request, modelos y constantes compartidas        |
-| `@vm/tsconfig`      | `packages/tsconfig/`      | `base`, `nestjs`, `nextjs`, `library` (todos `strict`)          |
-| `@vm/eslint-config` | `packages/eslint-config/` | Flat configs `base`, `nest`, `next` (type-aware)                |
+| Package             | Path                      | Description                                                                                                    |
+| ------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `@vm/backend`       | `apps/backend/`           | NestJS 11, Controller → Service → Repository (`CLAUDE.md`)                                                     |
+| `@vm/frontend`      | `apps/frontend/`          | Next.js 16 App Router, Tailwind 4, shadcn/ui, TanStack Query y Table, Recharts, Socket.io client (`CLAUDE.md`) |
+| `@vm/shared-types`  | `packages/shared-types/`  | Schemas Zod de request, modelos y constantes compartidas                                                       |
+| `@vm/tsconfig`      | `packages/tsconfig/`      | `base`, `nestjs`, `nextjs`, `library` (todos `strict`)                                                         |
+| `@vm/eslint-config` | `packages/eslint-config/` | Flat configs `base`, `nest`, `next` (type-aware)                                                               |
 
 ## Environment
 

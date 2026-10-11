@@ -86,7 +86,7 @@ pnpm --filter @vm/backend build      # nest build + scripts/check-dist-aliases.m
 pnpm --filter @vm/backend test       # unit (src/**/*.spec.ts)
 pnpm --filter @vm/backend test:e2e   # test/*.e2e-spec.ts sobre AppModule (necesita TEST_DATABASE_URL)
 pnpm --filter @vm/backend db:migrate # compila y aplica migraciones
-pnpm --filter @vm/backend db:seed    # usuarios de prueba (SEED_*)
+pnpm --filter @vm/backend db:seed    # usuarios de prueba (SEED_*) y VMs de ejemplo si no hay ninguna
 pnpm --filter @vm/backend test -t "RF-<slug>-NN"       # o test:e2e -t "…"; sin `--`
 ```
 

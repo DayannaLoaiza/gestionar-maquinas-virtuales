@@ -1,11 +1,18 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 @import './theme.css';
+
+/* Las variantes `dark:` siguen la clase `dark` de <html>, que pone el script del tema antes del
+   primer pintado (src/lib/theme/theme-script.ts), y no la preferencia del sistema operativo: con
+   "Claro" elegido sobre un sistema en oscuro, todo se ve claro. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* Tokens semánticos: cambian entre modo claro y oscuro (azul marino), así los componentes no repiten
    `dark:`. Valores literales a propósito, iguales a los de theme.css: Tailwind solo emite las
-   variables del tema que se usan, así que un var() aquí podría quedar vacío. Para un toggle manual,
-   cambiar la media query por un selector `.dark`. */
+   variables del tema que se usan, así que un var() aquí podría quedar vacío. `color-scheme` va con
+   el tema elegido para que los controles nativos (barras de desplazamiento, formularios) lo sigan. */
 :root {
+  color-scheme: light;
   --background: #ffffff; /* white */
   --foreground: #11153d; /* navy-900 */
   --card: #ffffff; /* white */
@@ -16,21 +23,29 @@
   --ring: #003cde; /* primary-500 */
   --link: #0033cc; /* primary-600 */
   --primary-foreground: #ffffff; /* white */
+  /* Gráficos de recursos (énfasis: un acento y gris para el resto). Validados para daltonismo y
+     contraste >= 3:1 contra la tarjeta; el cian no va en claro: sobre blanco da 1.6:1. */
+  --chart-active: #003cde; /* primary-500 */
+  --chart-inactive: #666666; /* surface-500 */
+  /* Resalte de una tarjeta que cambió en tiempo real (RF-realtime-vm-status-13). */
+  --highlight: #00e0ff; /* secondary-500 */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #070a1f; /* navy-950 */
-    --foreground: #ffffff; /* white */
-    --card: #11153d; /* navy-900 */
-    --card-foreground: #ffffff; /* white */
-    --muted: #232a5c; /* navy-800 */
-    --muted-foreground: #b9c0e4; /* navy-200 */
-    --border: #232a5c; /* navy-800 */
-    --ring: #2864ff; /* primary-400 */
-    --link: #7193ff; /* primary-300: primary-400 sobre navy-950 no llega a 4.5:1 */
-    --primary-foreground: #ffffff; /* white */
-  }
+.dark {
+  color-scheme: dark;
+  --background: #070a1f; /* navy-950 */
+  --foreground: #ffffff; /* white */
+  --card: #11153d; /* navy-900 */
+  --card-foreground: #ffffff; /* white */
+  --muted: #232a5c; /* navy-800 */
+  --muted-foreground: #b9c0e4; /* navy-200 */
+  --border: #232a5c; /* navy-800 */
+  --ring: #2864ff; /* primary-400 */
+  --link: #7193ff; /* primary-300: primary-400 sobre navy-950 no llega a 4.5:1 */
+  --primary-foreground: #ffffff; /* white */
+  --chart-active: #00e0ff; /* secondary-500 */
+  --chart-inactive: #5f6aab; /* navy-400 */
+  --highlight: #00e0ff; /* secondary-500 */
 }
 
 @theme inline {
@@ -44,13 +59,28 @@
   --color-ring: var(--ring);
   --color-link: var(--link);
   --color-primary-foreground: var(--primary-foreground);
+  --color-chart-active: var(--chart-active);
+  --color-chart-inactive: var(--chart-inactive);
+  --color-highlight: var(--highlight);
+}
+
+/* Destello de una tarjeta que cambió en tiempo real (RF-realtime-vm-status-13): una capa con el
+   color de resalte que se desvanece. Con `prefers-reduced-motion`, la regla de abajo la acorta a
+   0.01ms y el cambio se ve solo en el estado de la tarjeta. */
+@theme {
+  --animate-vm-flash: vm-flash 2s ease-out;
+
+  @keyframes vm-flash {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
 }
 
 @layer base {
-  :root {
-    color-scheme: light dark;
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
   }
@@ -65,5 +95,31 @@
   ::selection {
     background-color: var(--color-primary-200);
     color: var(--color-navy-900);
+  }
+
+  /* Tailwind 4 deja el cursor por defecto en los botones. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Movimiento reducido (RF-app-shell-13): una sola regla global, nunca `motion-reduce:` por
+   componente. 0.01ms y no `none`, porque Radix espera `animationend` para desmontar un overlay; una
+   sola iteración, para que el pulso de los skeletons se detenga. `animate-spin` queda exceptuado:
+   un indicador de carga quieto parece colgado. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
   }
 }

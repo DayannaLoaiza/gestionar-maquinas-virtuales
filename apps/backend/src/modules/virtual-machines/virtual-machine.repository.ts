@@ -73,6 +73,10 @@ export class VirtualMachineRepository {
     return this.vms.find({ order: { createdAt: 'DESC', id: 'ASC' } });
   }
 
+  count(): Promise<number> {
+    return this.vms.count();
+  }
+
   /**
    * La unicidad del nombre la decide solo el índice único: dos inserciones simultáneas con el mismo
    * nombre siguen el mismo camino (RF-virtual-machines-06).

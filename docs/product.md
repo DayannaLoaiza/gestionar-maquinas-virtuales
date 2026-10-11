@@ -26,12 +26,11 @@ un error de autorización.
 
 ### Rutas
 
-| Ruta                     | Acceso  | Qué hace                                                                                                   |
-| ------------------------ | ------- | ---------------------------------------------------------------------------------------------------------- |
-| Login                    | Pública | Email y contraseña                                                                                         |
-| Dashboard                | Privada | Resumen y panel de recursos; acciones según el rol                                                         |
-| Listado de VMs           | Privada | Todas las VMs                                                                                              |
-| Creación / edición de VM | Privada | Formulario con validación en tiempo real (p. ej., RAM no negativa, formato del nombre); solo Administrador |
+| Ruta                     | Acceso  | Qué hace                                                                                                                              |
+| ------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Login                    | Pública | Email y contraseña                                                                                                                    |
+| Panel (`/`)              | Privada | Panel de recursos arriba y listado de VMs en tarjetas debajo; acciones según el rol (specs `resource-dashboard` y `virtual-machines`) |
+| Creación / edición de VM | Privada | Modal sobre el Panel, con validación en tiempo real (p. ej., RAM no negativa, formato del nombre); solo Administrador                 |
 
 ### Requisitos de UI/UX
 
@@ -57,7 +56,8 @@ La UI usa **solo** esta paleta (tokens:
 | **Negro**       | `#000000` | Negro puro, para overlays                                           |
 
 Además, grises neutros para fondos y bordes, y verde, ámbar y rojo para estados. El **dark mode** es
-azul marino profundo y sigue la preferencia del sistema. El gradiente de marca es azul → cian.
+azul marino profundo; por defecto sigue la preferencia del sistema, y la persona puede fijar Claro u
+Oscuro (spec `app-shell`). El gradiente de marca es azul → cian.
 
 ### Tiempo real
 
@@ -109,11 +109,11 @@ Se resuelven en la spec o el plan de la capacidad que las necesite. No se instal
 
 | Tema                           | `[NECESITA ACLARACIÓN]`                                                                                                       | Capacidad            |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| ~~Persistencia~~               | Resuelta: PostgreSQL + TypeORM; usuarios de prueba por `db:seed` (spec `auth`)                                                | `auth`               |
-| Estado de servidor             | Librería para caché, optimistic UI y reversión (p. ej., TanStack Query)                                                       | `virtual-machines`   |
-| Gráficos                       | Recharts o Chart.js                                                                                                           | `resource-dashboard` |
+| ~~Persistencia~~               | Resuelta: PostgreSQL + TypeORM; usuarios de prueba y VMs de ejemplo por `db:seed` (specs `auth` y `virtual-machines`)         | `auth`               |
+| ~~Estado de servidor~~         | Resuelta: TanStack Query 5, con optimistic UI por versiones (plan del cambio `2026-10-11-frontend-vms`)                       | `virtual-machines`   |
+| ~~Gráficos~~                   | Resuelta: Recharts; indicadores, gráfico al 100 % por recurso y aporte por VM (spec `resource-dashboard`)                     | `resource-dashboard` |
 | ~~Tiempo real~~                | Resuelta: Socket.io solo WebSocket en `/api/socket.io`, cookie de sesión validada en el handshake (spec `realtime-vm-status`) | `realtime-vm-status` |
-| Toggle de tema                 | La paleta y el dark mode están definidos; ¿además un toggle manual persistido?                                                | transversal (UI)     |
+| ~~Toggle de tema~~             | Resuelta: Claro / Oscuro / Sistema (por defecto), guardado en el navegador y sin parpadeo (spec `app-shell`)                  | `app-shell`          |
 | ~~Valores de `os` y `status`~~ | Resuelta: catálogo cerrado de `os` en `@vm/shared-types`; sin reglas por estado (spec `virtual-machines`)                     | `virtual-machines`   |
 | ~~Listado~~                    | Resuelta: lista completa, sin paginar (spec `virtual-machines`)                                                               | `virtual-machines`   |
 | ~~Sesión~~                     | Resuelta (spec `auth`): 7 días sin uso / 30 desde el login, logout que revoca, sin refresh                                    | `auth`               |

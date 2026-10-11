@@ -4,8 +4,11 @@
 @theme {
   --color-*: initial;
 
+  /* Archivo (variable, con eje de ancho) llega por `next/font` en `app/layout.tsx`, que define
+     `--font-archivo` en <html>. Los títulos usan su ancho semi-expandido (`font-stretch-*`). */
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    var(--font-archivo), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Menlo, Consolas, monospace;
 
   --color-white: #ffffff;

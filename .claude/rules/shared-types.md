@@ -36,8 +36,10 @@ dentro de una app si puede vivir acá.
 
 - **Request DTOs** — el backend los usa para validar (`ZodValidationPipe`) y el frontend para tipar
   el body y como `zodResolver` de sus formularios.
-- **Form schemas** (con `confirmPassword`, etc.) — solo del frontend, pero junto a su request DTO.
-  El form se transforma al DTO de API antes de enviarse.
+- **Las piezas que reutilizan los formularios** (`VmName`, `CreateVirtualMachineDTO.shape.*`,
+  límites y catálogos). El schema del formulario en sí, cuando es solo del frontend (campos como
+  texto, `confirmPassword`…), vive en `apps/frontend/src/schemas/` (`forms-conventions.md`) y
+  transforma al DTO de la API.
 - **Modelos de dominio que viajan por la API** y sus constantes `as const`, cuando una capacidad
   los cree. Divergencia deliberada respecto de Visor, que los pone en el frontend.
 
@@ -45,7 +47,11 @@ dentro de una app si puede vivir acá.
 
 - **Las formas de respuesta de cada endpoint** (`{ items, pagination }`) — van en
   `apps/frontend/src/types/api.ts`, componiendo los modelos de acá.
-- **Response Zod schemas** — nadie valida respuestas en runtime.
+- **Response Zod schemas** — las respuestas no se validan con Zod. Dos excepciones, con type guards
+  propios del frontend: el `AuthUser` de login y `/me` (`isAuthUser`, en `src/lib/auth/`), porque un
+  rol inesperado no puede dar permisos (RF-auth-22), y el payload de `vm:status-changed`
+  (`readVmStatusChangedEvent`, en `src/lib/realtime/`), que llega por otro canal y se aplica sobre
+  un estado ya armado (RF-realtime-vm-status-12).
 - **Tipos solo del backend** (filas de repositorio, props internas) — inline en el backend.
 - **TS `enum`** — usar objeto `as const` + tipo del mismo nombre: existe en runtime en CJS y ESM.
 

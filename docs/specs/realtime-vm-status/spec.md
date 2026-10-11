@@ -1,14 +1,14 @@
 # Especificación — Estado de las VMs en tiempo real
 
-| Campo                         | Valor                                                                                                                                                                                                                                                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Estado                        | vigente                                                                                                                                                                                                                                                                                                      |
-| Aprobada por / fecha          | Dayanna — 2026-10-10 (puerta G1)                                                                                                                                                                                                                                                                             |
-| Capacidad                     | `realtime-vm-status`                                                                                                                                                                                                                                                                                         |
-| Responsable                   | Dayanna                                                                                                                                                                                                                                                                                                      |
-| Constitución                  | revisada contra v1.0.0                                                                                                                                                                                                                                                                                       |
-| Última verificación vs código | 2026-10-10 (sobre `43474d7`, sin commitear)                                                                                                                                                                                                                                                                  |
-| Código                        | `apps/backend/src/modules/realtime/`, `apps/backend/src/modules/auth/auth.events.ts`, `apps/backend/src/modules/virtual-machines/virtual-machine.events.ts`, `apps/backend/src/shared/utils/origin.util.ts`, `apps/backend/src/shared/utils/security-headers.util.ts`, `packages/shared-types/src/realtime/` |
+| Campo                         | Valor                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Estado                        | vigente (backend RF-realtime-vm-status-01…10 y frontend RF-realtime-vm-status-11…16)                                                                                                                                                                                                                                                                                                                                                                        |
+| Aprobada por / fecha          | Dayanna — 2026-10-10 (puerta G1, backend); Dayanna — 2026-10-11 (puerta G1, delta del frontend)                                                                                                                                                                                                                                                                                                                                                             |
+| Capacidad                     | `realtime-vm-status`                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Responsable                   | Dayanna                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Constitución                  | revisada contra v1.0.0                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Última verificación vs código | 2026-10-11 (frontend: árbol de trabajo sobre `179a83c`; lo sella el commit de Dayanna)                                                                                                                                                                                                                                                                                                                                                                      |
+| Código                        | Backend: `apps/backend/src/modules/realtime/`, `apps/backend/src/modules/auth/auth.events.ts`, `apps/backend/src/modules/virtual-machines/virtual-machine.events.ts`, `apps/backend/src/shared/utils/origin.util.ts`, `apps/backend/src/shared/utils/security-headers.util.ts`, `packages/shared-types/src/realtime/`. Frontend: `apps/frontend/src/lib/realtime/`, `apps/frontend/src/components/realtime/`, `apps/frontend/src/lib/vms/apply-vm-event.ts` |
 
 ## Contexto y objetivo
 
@@ -34,6 +34,29 @@ llama a `proxyRequest`; `next/dist/server/lib/router-utils/proxy-request.js`, `w
 el socket vive en `/api/socket.io`: el navegador se conecta a su mismo origen, la cookie `HttpOnly`
 viaja sola y CORS no hace falta para el navegador.
 
+### Frontend (cambio `2026-10-11-frontend-vms`)
+
+Con el backend vigente, ninguna pantalla escucha el socket: un cambio de estado hecho por un
+Administrador solo se ve en otra pantalla al recargar. Este delta conecta el panel al socket,
+aplica cada `vm:status-changed` sobre el listado de VMs que se ve (la regla de versiones es
+RF-virtual-machines-24), resalta la tarjeta que cambió y vuelve a sincronizar el listado cada vez
+que la conexión se establece. El panel de recursos (spec `resource-dashboard`) se recalcula solo,
+porque suma ese mismo listado.
+
+Nace en el cambio `2026-10-11-frontend-vms`, junto con el frontend de `virtual-machines`; el
+análisis OWASP del cambio está en esa spec ("Análisis OWASP del frontend de VMs"). Los hallazgos que
+tocan esta capacidad son V4 (validar el payload de cada evento) y V5 (el cliente de Socket.io no se
+reconecta solo tras un cierre del servidor ni tras un rechazo del handshake).
+
+**Supuestos:**
+
+| Supuesto                                                                                       | Evidencia                                                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| El cliente usa la ruta sin barra final y solo WebSocket                                        | `REALTIME_CLIENT_OPTIONS` (`packages/shared-types/src/realtime/realtime-events.ts`), verificado a través de Next en el G4 del backend          |
+| Tras `io server disconnect` o un rechazo del middleware del handshake, el cliente no reintenta | Socket.io v4, "Client socket instance" → `connect_error` y `disconnect` (`socket.active`), consultado con Context7 el 2026-10-11               |
+| Una caída de red o un reinicio del backend sí se reconectan solos                              | Misma fuente: `transport close`, `ping timeout` y `transport error` reconectan                                                                 |
+| El navegador manda la cookie `SameSite=Strict` en el upgrade del WebSocket al mismo origen     | **A verificar en el navegador:** el G4 del backend lo probó con `socket.io-client` desde Node. Verificación manual de RF-realtime-vm-status-11 |
+
 ## Actores y permisos
 
 Roles de `ROLES` (`@vm/shared-types`, spec `auth`). Todo usuario ve todas las VMs (spec
@@ -47,6 +70,8 @@ eventos: no hay suscripción por VM ni por usuario.
 | Administrador | Lo mismo que el Cliente. Sus cambios de estado por `PUT /api/vms/:id` originan los eventos |
 
 ## Requisitos funcionales (EARS)
+
+### API (backend)
 
 - **RF-realtime-vm-status-01** · crítico (K5) — CUANDO la API arranca, el sistema debe aceptar
   conexiones Socket.io en la ruta `/api/socket.io`, en el mismo servidor y puerto HTTP de la API
@@ -111,6 +136,59 @@ eventos: no hay suscripción por VM ni por usuario.
     un texto fijo, que la API WebSocket del navegador no expone a la página;
   - el `204` sin cuerpo al preflight CORS, que responde el middleware CORS antes que `helmet`.
 
+### Frontend
+
+- **RF-realtime-vm-status-11** · crítico (K1, K3) — CUANDO se abre una página del panel, el
+  sistema debe abrir **una** conexión Socket.io por pestaña, al mismo origen y con
+  `REALTIME_CLIENT_OPTIONS` (`/api/socket.io`, sin barra final, solo WebSocket). La sesión viaja
+  solo en la cookie que pone el navegador: el cliente no manda token ni credenciales en el `auth`
+  del handshake, la query ni las cabeceras, y nunca usa la URL del backend (RF-app-shell-14). La
+  conexión se mantiene al navegar entre páginas del panel y se cierra al salir de él; fuera del
+  panel (`/login`, la 404) no hay conexión. El cliente no emite eventos
+  (RF-realtime-vm-status-09).
+- **RF-realtime-vm-status-12** · crítico (K3, K4) — CUANDO llega `vm:status-changed`, el sistema
+  debe comprobar que el payload tenga la forma de `VmStatusChangedEvent`: una `VirtualMachine`
+  completa, con `status` y `os` del catálogo y `updatedAt` en ISO 8601. Uno que no la tiene se
+  ignora sin cambiar nada (hallazgo V4). Uno válido se aplica según RF-virtual-machines-24:
+  - reemplaza la versión confirmada de la VM si es más reciente; si es más vieja, se descarta;
+  - SI la VM no está en el listado (p. ej., otro Administrador la creó después de la última
+    carga), ENTONCES el sistema vuelve a pedir el listado;
+  - una VM con una eliminación pendiente no reaparece por un evento.
+- **RF-realtime-vm-status-13** · estándar — CUANDO un evento cambia el estado que se ve en una
+  tarjeta, la tarjeta debe resaltarse con una animación leve: un destello del color de acento
+  (cian, `secondary`) que se desvanece en unos 2 s, sin mover el contenido ni robar el foco.
+  - El cambio se anuncia a los lectores de pantalla en una región `polite`
+    (`web-01 ahora está Encendida`).
+  - Con `prefers-reduced-motion`, no hay animación: el cambio se ve en el estado de la tarjeta.
+  - Un evento que no cambia lo que se ve no resalta nada; p. ej., la confirmación del cambio que el
+    Administrador acaba de hacer en esa misma pestaña, que ya se mostraba (RF-virtual-machines-22).
+  - Varios eventos seguidos de la misma VM reinician el resalte; no se acumulan.
+- **RF-realtime-vm-status-14** · crítico (K5) — CUANDO la conexión se establece, la primera vez y
+  en cada reconexión, el sistema debe volver a pedir el listado, sin skeleton y sin perder los
+  cambios pendientes (RF-virtual-machines-24). Los eventos emitidos mientras no había conexión no
+  se reenvían ("Fuera de alcance"), y entre la carga inicial del listado y la primera conexión
+  puede perderse alguno. Es K5: sin esto, la pantalla queda desactualizada y nada lo avisa.
+- **RF-realtime-vm-status-15** · crítico (K1) — Fin de la sesión (hallazgo V5):
+  - SI el handshake se rechaza con `code: 'UNAUTHENTICATED'` (RF-realtime-vm-status-03),
+    ENTONCES el sistema debe tratarlo como sesión expirada: carga completa de `/login` con el aviso
+    `Tu sesión expiró. Inicia sesión de nuevo` (RF-auth-26), una sola vez aunque coincida con un
+    `401` de otro pedido.
+  - SI el servidor cierra la conexión (`io server disconnect`: logout, sesión vencida o usuario
+    desactivado, RF-realtime-vm-status-08), ENTONCES el sistema debe verificar la sesión con
+    `GET /api/auth/me`. Sin sesión (`401`), sigue RF-auth-26; con sesión, vuelve a conectar una
+    vez.
+  - Nunca reintenta en bucle con una sesión inválida.
+- **RF-realtime-vm-status-16** · estándar — El panel debe mostrar el estado del tiempo real, con
+  texto e ícono (el color nunca va solo), en un lugar fijo de la página:
+  - `En vivo`: conectado;
+  - `Conectando…`: primer intento o reconexión automática (sin red, backend reiniciado);
+  - `Sin conexión en tiempo real`: tras un rechazo del handshake que no es de sesión (p. ej.,
+    `INTERNAL_ERROR` o `Origin`). En ese caso el sistema reintenta solo, con esperas crecientes de
+    1 s hasta un máximo de 30 s.
+
+  Sin conexión, el panel sigue funcionando por REST: el listado, los formularios y la optimistic
+  UI no dependen del socket. Un cambio de estado de la conexión no muestra toasts.
+
 ## Requisitos no funcionales
 
 - **RNF-realtime-vm-status-01** — Eficiencia con muchas conexiones: un evento se arma una vez y se
@@ -133,6 +211,13 @@ eventos: no hay suscripción por VM ni por usuario.
   transporte, evento, payload y errores del handshake), cómo probarlo con Postman (petición
   Socket.IO) y el diagrama base cliente ↔ API ↔ tiempo real que pide `docs/product.md` →
   "Documentación que el README debe tener".
+- **RNF-realtime-vm-status-06** — Frontend: cliente `socket.io-client` del mismo major que el
+  servidor (4.x), con versión exacta, y un `Socket` tipado con `ServerToClientEvents` y
+  `ClientToServerEvents`. Sin `any`, funciones de menos de 50 líneas, `'use client'` solo donde
+  hace falta; `pnpm lint`, `pnpm typecheck` y `pnpm build` sin errores.
+- **RNF-realtime-vm-status-07** — El `README.md` suma al contrato de tiempo real el lado del
+  frontend: cuándo se conecta, cómo resincroniza, qué muestra el indicador y qué pasa al terminar la
+  sesión. El diagrama cliente ↔ API ↔ tiempo real se actualiza si cambia.
 
 ## Casos límite
 
@@ -180,10 +265,32 @@ eventos: no hay suscripción por VM ni por usuario.
 - Varias instancias del backend detrás de un balanceador: cada una difunde solo a sus conexiones
   (ver "Fuera de alcance").
 
+**Frontend:**
+
+- Administrador con dos pestañas que apaga una VM desde una: en la otra, la tarjeta cambia y se
+  resalta; en la que hizo el cambio, no se resalta, porque ya lo mostraba (RF-realtime-vm-status-13).
+- Un Cliente y un Administrador en dos navegadores: el Cliente ve el resalte y el panel de recursos
+  recalculado al instante (RF-realtime-vm-status-12, 13; RF-resource-dashboard-03).
+- Evento de una VM que este listado no tiene: se recarga el listado y aparece
+  (RF-realtime-vm-status-12).
+- Evento con `status: "encendida"`, sin `updatedAt` o sin `item`: se ignora (RF-realtime-vm-status-12).
+- Evento atrasado, más viejo que la versión que trajo una carga del listado: se descarta
+  (RF-realtime-vm-status-12, RF-virtual-machines-24).
+- Red caída dos minutos: `Conectando…` y reconexión automática del cliente; al reconectar, se
+  recarga el listado (RF-realtime-vm-status-14, 16).
+- Backend reiniciado: el cliente se reconecta solo y recarga el listado (RF-realtime-vm-status-14).
+- Base de datos caída durante el handshake (`INTERNAL_ERROR`): `Sin conexión en tiempo real` y
+  reintentos; nunca lleva a `/login` (RF-realtime-vm-status-15, 16).
+- Logout en otra pestaña: esta se recarga por RF-auth-33; si antes llega el cierre del socket, la
+  verificación de sesión da `401` y lleva a `/login`. Las dos vías terminan en un solo destino
+  (RF-realtime-vm-status-15).
+- Pestaña abierta 7 días sin pedidos HTTP: el servidor cierra el socket, la verificación da `401`
+  y se ve `/login` con el aviso de sesión expirada (RF-realtime-vm-status-15).
+- Navegar del Panel a otra página del panel: la misma conexión, sin reconectar
+  (RF-realtime-vm-status-11).
+
 ## Fuera de alcance
 
-- Frontend: conectarse, actualizar la tarjeta con la animación, volver a sincronizar al reconectar.
-  Cambio posterior de esta spec.
 - Difundir altas, bajas y ediciones que no cambian el estado (decidido en la clarificación, D1).
 - Respaldo de long-polling para redes que bloquean WebSocket (D4).
 - Varias instancias del backend (adapter de Redis): hoy hay una.
@@ -194,6 +301,8 @@ eventos: no hay suscripción por VM ni por usuario.
 - Suscripción selectiva (salas por VM o por usuario a pedido del cliente).
 - Exponer quién hizo el cambio.
 - Integración con un hipervisor real: el evento refleja un cambio de registro.
+- En el frontend: notificaciones del sistema operativo o sonidos, un toast por cada evento (el
+  resalte de la tarjeta basta) e historial de eventos.
 
 ## Contratos visibles
 
@@ -210,6 +319,10 @@ eventos: no hay suscripción por VM ni por usuario.
 En `@vm/shared-types` (RNF-realtime-vm-status-02): la ruta, los nombres de evento, el payload, los
 mapas de eventos y los códigos de error del handshake. No hay endpoints REST nuevos ni cambia
 ninguno existente.
+
+El delta del frontend no cambia el contrato: lo consume tal como está. Si el plan agrega un schema
+Zod del modelo `VirtualMachine` en `@vm/shared-types` para validar el payload (RF-12), no cambia su
+forma.
 
 ## Verificación contra la constitución
 
@@ -230,6 +343,25 @@ ninguno existente.
 
 Sin excepciones.
 
+### Delta del frontend (`2026-10-11-frontend-vms`)
+
+| ID  | Aplica | Cómo se cumple                                                                                                                                      |
+| --- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Sí     | Todo el comportamiento del tiempo real en el navegador está en este delta antes de implementarse                                                    |
+| C2  | Sí     | Spec antes que código, en el mismo PR que `virtual-machines` y `resource-dashboard`                                                                 |
+| C3  | Sí     | G1 sobre las tres specs juntas; G2 sobre el plan y las tareas antes de tocar `apps/` y `packages/`                                                  |
+| C4  | Sí     | Sin dudas propias: las del cambio (DF1–DF4) están en la spec `virtual-machines`                                                                     |
+| C5  | Sí     | Sin discrepancias con el backend: el caso límite "Al reconectar, el frontend vuelve a pedir `GET /api/vms`" se amplía a la primera conexión (RF-14) |
+| C6  | Sí     | RF-11, 12, 14 y 15 son Críticos (K1, K3, K4, K5): test con su ID, y además verificación manual en el navegador de RF-11. RF-13 y 16 son Estándar    |
+| C7  | No     | Sin cambios en el backend                                                                                                                           |
+| C8  | Sí     | El payload de cada evento se valida antes de aplicarse (V4); sesión solo por cookie (RF-11)                                                         |
+| C9  | Sí     | RNF-realtime-vm-status-06                                                                                                                           |
+| C10 | Sí     | El cliente usa la ruta, las opciones, los nombres de evento y los mapas de `@vm/shared-types`                                                       |
+| C11 | Sí     | Cliente de Socket.io v4 consultado con Context7 (`connect_error`, `disconnect`, `socket.active`); el plan fija la versión                           |
+| C12 | No     | Sin secretos ni variables de entorno nuevas                                                                                                         |
+
+Sin excepciones.
+
 ## Verificación manual
 
 - **RF-realtime-vm-status-01 y 05 a través de Next** (el e2e se conecta directo a Nest; pasar por
@@ -246,10 +378,23 @@ Sin excepciones.
   (`UPDATE users SET is_active = false WHERE email = '<email>'`). La conexión se cierra en como
   mucho 60 segundos, con el motivo `io server disconnect`, y el log del backend registra la
   desconexión forzada con el id del usuario.
+- **RF-realtime-vm-status-11 en el navegador** (sin E2E de navegador, `docs/testing.md`): con
+  `pnpm dev` y `COOKIE_SECURE=false`, el Administrador en Chrome y el Cliente en otro perfil (o en
+  Firefox), los dos en el Panel. En las DevTools → Network → WS de cada uno: una sola conexión a
+  `ws://localhost:3000/api/socket.io?EIO=4&transport=websocket`, con la cookie de sesión en la
+  petición y sin token en la URL. Al navegar entre páginas del panel, la conexión sigue siendo la
+  misma. El Administrador apaga una VM encendida: en la pantalla del Cliente la tarjeta cambia y se
+  resalta en menos de un segundo, y el total de cores del panel de recursos baja.
+- **RF-realtime-vm-status-15 en el navegador:** con el Panel abierto, desactivar al usuario en la
+  base como en el punto del plazo de 60 segundos. En como mucho 60 segundos la pestaña termina en
+  `/login` con el aviso `Tu sesión expiró. Inicia sesión de nuevo`.
 
 ## Dudas abiertas
 
-Ninguna. Resueltas en la clarificación del 2026-10-10:
+**Delta del frontend:** sin dudas propias; las del cambio (DF1–DF4) están en la spec
+`virtual-machines`.
+
+**Backend:** ninguna. Resueltas en la clarificación del 2026-10-10:
 
 - **D1.** Solo se difunden los cambios reales de `status`; no se emite si un `PUT` trae el mismo
   estado, ni en altas, bajas o ediciones de otros campos (RF-realtime-vm-status-05, 06).
@@ -261,10 +406,12 @@ Ninguna. Resueltas en la clarificación del 2026-10-10:
 
 ## Historial
 
-| Fecha      | Cambio                                                                                                                                                                                                                                                                            | PR  | Requisitos                                                | Aprobó                   |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --------------------------------------------------------- | ------------------------ |
-| 2026-10-10 | Creación: backend del tiempo real (Socket.io autenticado con la cookie, difusión de cambios de estado, desconexión al terminar la sesión)                                                                                                                                         | —   | RF-realtime-vm-status-01…10, RNF-realtime-vm-status-01…05 | Dayanna (G1)             |
-| 2026-10-10 | Delta en el plan: RF-10 excluye el rechazo del upgrade WebSocket y el preflight CORS, que Engine.IO responde sin middleware; verificación manual del plazo de 60 s de RF-08                                                                                                       | —   | RF-realtime-vm-status-08, 10                              | Dayanna (G1, 2026-10-10) |
-| 2026-10-10 | Delta tras la revisión local: RF-09, una conexión WebSocket abre un solo socket (un `CONNECT` repetido la cierra sin consultar la sesión); caso límite aceptado de logout simultáneo a un handshake (RF-08)                                                                       | —   | RF-realtime-vm-status-08, 09                              | Dayanna (G1, 2026-10-10) |
-| 2026-10-10 | Delta tras la verificación manual: la ruta del socket sin barra final (`addTrailingSlash: false`, `REALTIME_CLIENT_OPTIONS`), porque Next redirige con `308` las URLs con barra final y el upgrade no pasaba por el rewrite                                                       | —   | RF-realtime-vm-status-01                                  | Dayanna (G1, 2026-10-10) |
-| 2026-10-10 | Validación (G4): implementado y verificado; 37 tests e2e con ID en verde (136 en total); verificaciones manuales de RF-01/05 a través de Next y del plazo de RF-08 hechas; revisión local (code-reviewer, api-reviewer, security-auditor) con los hallazgos resueltos o aceptados | —   | RF-realtime-vm-status-01…10                               | Dayanna (G4)             |
+| Fecha      | Cambio                                                                                                                                                                                                                                                                                                                                                                                                   | PR  | Requisitos                                                | Aprobó                   |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- | --------------------------------------------------------- | ------------------------ |
+| 2026-10-10 | Creación: backend del tiempo real (Socket.io autenticado con la cookie, difusión de cambios de estado, desconexión al terminar la sesión)                                                                                                                                                                                                                                                                | —   | RF-realtime-vm-status-01…10, RNF-realtime-vm-status-01…05 | Dayanna (G1)             |
+| 2026-10-10 | Delta en el plan: RF-10 excluye el rechazo del upgrade WebSocket y el preflight CORS, que Engine.IO responde sin middleware; verificación manual del plazo de 60 s de RF-08                                                                                                                                                                                                                              | —   | RF-realtime-vm-status-08, 10                              | Dayanna (G1, 2026-10-10) |
+| 2026-10-10 | Delta tras la revisión local: RF-09, una conexión WebSocket abre un solo socket (un `CONNECT` repetido la cierra sin consultar la sesión); caso límite aceptado de logout simultáneo a un handshake (RF-08)                                                                                                                                                                                              | —   | RF-realtime-vm-status-08, 09                              | Dayanna (G1, 2026-10-10) |
+| 2026-10-10 | Delta tras la verificación manual: la ruta del socket sin barra final (`addTrailingSlash: false`, `REALTIME_CLIENT_OPTIONS`), porque Next redirige con `308` las URLs con barra final y el upgrade no pasaba por el rewrite                                                                                                                                                                              | —   | RF-realtime-vm-status-01                                  | Dayanna (G1, 2026-10-10) |
+| 2026-10-10 | Validación (G4): implementado y verificado; 37 tests e2e con ID en verde (136 en total); verificaciones manuales de RF-01/05 a través de Next y del plazo de RF-08 hechas; revisión local (code-reviewer, api-reviewer, security-auditor) con los hallazgos resueltos o aceptados                                                                                                                        | —   | RF-realtime-vm-status-01…10                               | Dayanna (G4)             |
+| 2026-10-11 | Delta del frontend (cambio `2026-10-11-frontend-vms`): conexión por pestaña con la cookie, validación y aplicación de `vm:status-changed`, resalte de la tarjeta, resincronización en cada conexión, fin de sesión e indicador de conexión                                                                                                                                                               | —   | RF-realtime-vm-status-11…16, RNF-realtime-vm-status-06…07 | Dayanna (G1)             |
+| 2026-10-11 | Validación (G4) del frontend: implementado y verificado. RF-11, 12, 14 y 15 con test (RF-15 con el cableado real de la sesión); verificaciones manuales en Chrome de RF-11 (una conexión, cookie en el handshake) y RF-15 (usuario desactivado → `/login` en 27 s). Tras la revisión: guarda del evento con límites e ISO 8601, y espera creciente ante cierres repetidos del servidor con sesión válida | —   | RF-realtime-vm-status-11…16                               | Dayanna (G4)             |

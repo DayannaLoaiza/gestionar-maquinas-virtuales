@@ -1,10 +1,10 @@
 # Tareas — backend del tiempo real
 
-| Campo                | Valor                                           |
-| -------------------- | ----------------------------------------------- |
-| Estado               | cerrada                                         |
-| Aprobada por / fecha | Dayanna — 2026-10-10 (puerta G2)                |
-| Cerrada              | 2026-10-10, sin commit aún (puerta G4, Dayanna) |
+| Campo                | Valor                                             |
+| -------------------- | ------------------------------------------------- |
+| Estado               | cerrada                                           |
+| Aprobada por / fecha | Dayanna — 2026-10-10 (puerta G2)                  |
+| Cerrada              | 2026-10-10, commit `179a83c` (puerta G4, Dayanna) |
 
 Plan: `plan.md` (esta carpeta). Spec: `docs/specs/realtime-vm-status/spec.md`. ⏸ = me detengo y
 muestro el diff (G3). Los IDs abreviados (`RF-05`) son `RF-realtime-vm-status-05`.

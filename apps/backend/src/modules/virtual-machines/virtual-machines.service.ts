@@ -36,6 +36,11 @@ export class VirtualMachinesService {
     return vms.map((vm) => this.toVirtualMachine(vm));
   }
 
+  /** Cuántas VMs hay. El seed carga las de ejemplo solo si no hay ninguna (RF-virtual-machines-28). */
+  count(): Promise<number> {
+    return this.repository.count();
+  }
+
   /** Sin `status`, la VM nace `Apagada` (RF-virtual-machines-03). */
   async create(input: CreateVirtualMachineDTO, actor: AuthUser): Promise<VirtualMachine> {
     const result = await this.repository.insert({

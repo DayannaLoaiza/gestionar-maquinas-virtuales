@@ -44,3 +44,8 @@ export function toUserMessage(error: unknown, fallback: string): string {
   if (error.code !== undefined && GENERIC_CODES.has(error.code)) return fallback;
   return error.message;
 }
+
+/** `true` si `error` es un `ApiError` con ese status (p. ej., un `404` de una VM ya eliminada). */
+export function isApiErrorStatus(error: unknown, status: number): boolean {
+  return error instanceof ApiError && error.status === status;
+}
